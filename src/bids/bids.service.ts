@@ -50,7 +50,7 @@ export class BidsService {
       .from(advertsTable)
       .where(eq(advertsTable.id, data.advertId));
 
-    if (!dbAdvert) {
+    if (!dbAdvert.length) {
       throw new NotFoundException('Advert not found');
     }
 
@@ -65,7 +65,7 @@ export class BidsService {
       .from(bidIntentsTable)
       .where(eq(bidIntentsTable.id, data.bidIntentId));
 
-    if (!dbBidIntent) {
+    if (!dbBidIntent.length) {
       throw new NotFoundException('Bid intent not found');
     }
 
@@ -81,7 +81,7 @@ export class BidsService {
         .from(advertsTable)
         .where(eq(advertsTable.id, data.advertId));
 
-      if (!dbAdvert) {
+      if (!dbAdvert.length) {
         throw new NotFoundException('Advertisement not found');
       }
 
@@ -159,7 +159,7 @@ export class BidsService {
       .from(usersTable)
       .where(eq(usersTable.id, userId));
 
-    if (!dbUser) {
+    if (!dbUser.length) {
       throw new NotFoundException('User not found');
     }
 
@@ -168,7 +168,7 @@ export class BidsService {
       .from(advertsTable)
       .where(eq(advertsTable.id, data.advertId));
 
-    if (!dbAdvert) {
+    if (!dbAdvert.length) {
       throw new NotFoundException('Advert not found');
     }
 
@@ -201,20 +201,22 @@ export class BidsService {
         depositValue: mostRecentBidIntent.amount,
         paymentLink: mostRecentBidIntent.stripePaymentLink,
         minutesLeft: Math.ceil(timeUntilExpires / 60000),
+        depositPercentage: dbAdvert[0].depositPercentage,
       });
 
       throw new UnauthorizedException(
         `You have an active bid intent for this advert and amount. Please complete payment or wait for it to expire in ${Math.ceil(timeUntilExpires / 60000)} minutes before creating a new one.`,
       );
     } else {
-      const priceInCents = data.amount * 100;
-      const depositPriceInCents = (priceInCents * 10) / 100;
+      if (data.amount < dbAdvert[0].minBidAmount) {
+        throw new UnauthorizedException('Bid amount is less than the minimum.');
+      }
 
       const uniqueStripePrice = await stripe.prices.create({
         currency: 'usd',
-        unit_amount: depositPriceInCents,
+        unit_amount: (data.amount * dbAdvert[0].depositPercentage) / 100,
         product_data: {
-          name: `[BID] ${dbAdvert[0]?.title ?? 'Unknown Advert'} (10% deposit)`,
+          name: `[BID] ${dbAdvert[0]?.title ?? 'Unknown Advert'} (${dbAdvert[0].depositPercentage}% deposit)`,
         },
       });
 
@@ -241,9 +243,9 @@ export class BidsService {
         stripePaymentLinkId: paymentLink.id,
         stripeUniquePrice: uniqueStripePrice.id,
         userId,
-        amount: depositPriceInCents,
+        amount: (data.amount * dbAdvert[0].depositPercentage) / 100,
         advertId: data.advertId,
-        bidAmount: priceInCents,
+        bidAmount: data.amount,
       } as InferInsertModel<typeof bidIntentsTable>;
 
       const newBidIntent = await this.db
@@ -254,7 +256,8 @@ export class BidsService {
       await this.emailsService.sendBidIntentEmail(userId, {
         amount: data.amount * 100,
         paymentLink: paymentLink.url,
-        depositValue: depositPriceInCents,
+        depositValue: (data.amount * dbAdvert[0].depositPercentage) / 100,
+        depositPercentage: dbAdvert[0].depositPercentage,
       });
 
       return newBidIntent;
@@ -269,7 +272,7 @@ export class BidsService {
       .from(bidIntentsTable)
       .where(eq(bidIntentsTable.userId, userId));
 
-    if (!dbUser) throw new NotFoundException('User not found');
+    if (!dbUser.length) throw new NotFoundException('User not found');
 
     const bids = await this.db
       .select()
@@ -334,7 +337,7 @@ export class BidsService {
       .innerJoin(bidsTable, eq(bidsTable.advertId, advertsTable.id))
       .where(eq(bidsTable.id, id));
 
-    if (!dbAdvert) {
+    if (!dbAdvert.length) {
       throw new NotFoundException('Advertisement not found');
     }
 

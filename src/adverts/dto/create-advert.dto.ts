@@ -159,4 +159,8 @@ export const CreateAdvertDto = z.object({
     .string({ error: 'Slug must be a string' })
     .max(255, { error: 'Slug must not exceed 255 characters' })
     .optional(),
+  minBidAmount: z
+    .number({ error: 'Min. bid amount must be a number' })
+    .min(100, { error: 'The min. bid amount must be at least 1 dollar.' })
+    .optional(),
 });

@@ -9,7 +9,6 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { schema } from 'src/drizzle/schema';
 import z, { prettifyError } from 'zod';
 import { StripePaymentCompletedDto } from './dto/stripe-payment-completed.dto';
-import Stripe from 'stripe';
 import { usersTable } from 'src/drizzle/schema/users.schema';
 import { and, eq, InferInsertModel } from 'drizzle-orm';
 import { bidIntentsTable } from 'src/drizzle/schema/bid-intents.schema';
@@ -28,7 +27,6 @@ export class WebhookService {
   async onPaymentLinkSucceed(
     stripeRequest: z.infer<typeof StripePaymentCompletedDto>,
   ) {
-    const stripe = new Stripe(process.env.STRIPE_KEY ?? '');
     const { data, error } = StripePaymentCompletedDto.safeParse(stripeRequest);
 
     if (error) {
@@ -42,7 +40,7 @@ export class WebhookService {
       .from(usersTable)
       .where(eq(usersTable.id, Number(data.data.object.metadata.userId)));
 
-    if (!dbUser) {
+    if (!dbUser.length) {
       throw new NotFoundException('User not found');
     }
 
@@ -59,7 +57,7 @@ export class WebhookService {
         ),
       );
 
-    if (!bidIntent) {
+    if (!bidIntent.length) {
       throw new NotFoundException('Bid intent not found');
     }
 

@@ -15,7 +15,7 @@ import z, { prettifyError } from 'zod';
 import { usersTable } from 'src/drizzle/schema/users.schema';
 import { eq, InferInsertModel } from 'drizzle-orm';
 import { advertsTable } from 'src/drizzle/schema/adverts.schema';
-import Stripe from 'stripe';
+import { getDepositPercentage } from './utils/get-deposit-percentage';
 
 @Injectable()
 export class AdvertsService {
@@ -26,8 +26,6 @@ export class AdvertsService {
 
   async create(body: z.infer<typeof CreateAdvertDto>, userId: number) {
     const { data, error } = CreateAdvertDto.safeParse(body);
-
-    const stripe = new Stripe(process.env.STRIPE_KEY ?? '');
 
     if (error) {
       throw new InternalServerErrorException(prettifyError(error));
@@ -48,12 +46,14 @@ export class AdvertsService {
       throw new BadRequestException('The minimum accepted amount is $1');
     }
 
-    const priceInCents = data.amount * 100;
-    data.amount = priceInCents;
+    const insertData = {
+      ...data,
+      depositPercentage: getDepositPercentage(data.state),
+    } as InferInsertModel<typeof advertsTable>;
 
     const newAdvert = await this.db
       .insert(advertsTable)
-      .values(data as InferInsertModel<typeof advertsTable>)
+      .values(insertData)
       .returning();
 
     return newAdvert;
@@ -93,7 +93,7 @@ export class AdvertsService {
       .from(advertsTable)
       .where(eq(advertsTable.id, id));
 
-    if (!dbAdvert) throw new NotFoundException('Advert not found');
+    if (!dbAdvert.length) throw new NotFoundException('Advert not found');
     if (dbAdvert[0].userId !== userId)
       throw new UnauthorizedException("You can not edit anyone else's avert.");
 
@@ -117,7 +117,7 @@ export class AdvertsService {
       .from(advertsTable)
       .where(eq(advertsTable.id, id));
 
-    if (!dbAdvert) throw new NotFoundException('Advert not found');
+    if (!dbAdvert.length) throw new NotFoundException('Advert not found');
     if (dbAdvert[0].userId !== userId)
       throw new UnauthorizedException(
         "You can not delete anyone else's avert.",

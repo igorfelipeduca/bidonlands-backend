@@ -12,7 +12,7 @@ export const attachmentsTable = pgTable('attachments', {
   key: varchar({ length: 150 }).notNull().default(''),
   type: varchar({ length: 1, enum: ['1', '2'] })
     .notNull()
-    .default(ATTACHMENT_TYPE_CHOICES.DOCUMENT),
+    .default(ATTACHMENT_TYPE_CHOICES.USER_PERSONAL_INFO_DOCUMENT),
   tags: varchar().notNull().default(''),
   userId: integer('userId')
     .notNull()

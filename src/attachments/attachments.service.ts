@@ -72,7 +72,11 @@ export class AttachmentsService {
       .from(usersTable)
       .where(eq(usersTable.id, userId));
 
-    if (!dbUser) throw new NotFoundException('User does not exist');
+    if (!dbUser.length) throw new NotFoundException('User does not exist');
+
+    if (data.type === '1' && !data.advertId) {
+      throw new BadRequestException('Advert id is required');
+    }
 
     if (!dbUser[0] || !dbUser[0].emailVerified) {
       const availableEmail = await this.db
@@ -172,7 +176,8 @@ export class AttachmentsService {
       .from(attachmentsTable)
       .where(eq(attachmentsTable.id, id));
 
-    if (!dbAttachment) throw new NotFoundException('Attachment not found');
+    if (!dbAttachment.length)
+      throw new NotFoundException('Attachment not found');
     if (dbAttachment[0].userId !== userId)
       throw new UnauthorizedException('You can only edit your attachments');
 
@@ -196,7 +201,8 @@ export class AttachmentsService {
       .from(attachmentsTable)
       .where(eq(attachmentsTable.id, id));
 
-    if (!dbAttachment) throw new NotFoundException('Attachment not found');
+    if (!dbAttachment.length)
+      throw new NotFoundException('Attachment not found');
     if (dbAttachment[0].userId !== userId)
       throw new UnauthorizedException(
         'You can only delete your own attachments',

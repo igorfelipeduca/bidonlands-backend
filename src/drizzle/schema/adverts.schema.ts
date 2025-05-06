@@ -3,7 +3,6 @@ import {
   pgTable,
   varchar,
   text,
-  decimal,
   timestamp,
 } from 'drizzle-orm/pg-core';
 import { usersTable } from './users.schema';
@@ -125,4 +124,6 @@ export const advertsTable = pgTable('adverts', {
   highestBid: integer(),
   userHighestBidId: integer().references(() => usersTable.id),
   slug: varchar({ length: 255 }).unique(),
+  depositPercentage: integer().notNull(),
+  minBidAmount: integer().notNull(),
 });

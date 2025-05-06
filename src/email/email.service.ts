@@ -26,7 +26,7 @@ export class EmailService {
       .from(usersTable)
       .where(eq(usersTable.email, email));
 
-    if (!user) {
+    if (!user.length) {
       throw new NotFoundException('User not found');
     }
 
@@ -136,7 +136,7 @@ export class EmailService {
       .from(usersTable)
       .where(eq(usersTable.email, email));
 
-    if (!user) {
+    if (!user.length) {
       throw new NotFoundException('User not found');
     }
 
@@ -224,7 +224,12 @@ export class EmailService {
 
   async sendBidIntentEmail(
     userId: number,
-    bid: { amount: number; paymentLink: string; depositValue: number },
+    bid: {
+      amount: number;
+      paymentLink: string;
+      depositValue: number;
+      depositPercentage: number;
+    },
   ) {
     const user = await this.db
       .select()
@@ -248,7 +253,7 @@ export class EmailService {
     const sentEmail = await this.resend.emails.send({
       from: 'Igor Duca <igor@duca.dev>',
       to: [user[0].email],
-      subject: `Complete Your ${formattedAmount} Bid Payment - 10% Deposit Required`,
+      subject: `Complete Your ${formattedAmount} Bid Payment - ${bid.depositPercentage}% Deposit Required`,
       html: `
     <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     <html dir="ltr" lang="en">
@@ -263,7 +268,7 @@ export class EmailService {
               <td>
                 <img alt="DeedBid" height="32" src="https://www.deedbid.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo-dark.c5a29ad2.png&w=256&q=75" style="display:block;outline:none;border:none;text-decoration:none" width="auto" />
                 <p style="font-size:24px;line-height:1.25;margin:24px 0;color:#AB8551">
-                  <strong>Your Bid is Reserved - 10% Deposit Required</strong>
+                  <strong>Your Bid is Reserved - ${bid.depositPercentage}% Deposit Required</strong>
                 </p>
                 <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="padding:24px;border:solid 1px #dedede;border-radius:5px;text-align:center;background-color:#f8f9fa">
                   <tbody>
@@ -273,16 +278,16 @@ export class EmailService {
                           Hello <strong>${user[0].firstName || user[0].email}</strong>,
                         </p>
                         <p style="font-size:16px;line-height:24px;margin:0 0 16px 0;text-align:left">
-                          Great news! Your bid of <strong>${formattedAmount}</strong> has been temporarily reserved. To secure your position and finalize your bid, you are required to pay a <strong>10% deposit</strong> of your bid amount, which is <strong>${formattedDepositAmount}</strong>.
+                          Great news! Your bid of <strong>${formattedAmount}</strong> has been temporarily reserved. To secure your position and finalize your bid, you are required to pay a <strong>${bid.depositPercentage}% deposit</strong> of your bid amount, which is <strong>${formattedDepositAmount}</strong>.
                         </p>
                         <p style="font-size:16px;line-height:24px;margin:0 0 16px 0;text-align:left">
-                          <strong>Why is this required?</strong> The 10% deposit (<strong>${formattedDepositAmount}</strong>) is necessary to officially apply your bid and demonstrate your commitment. This amount will be deducted from your total bid if you win.
+                          <strong>Why is this required?</strong> The ${bid.depositPercentage}% deposit (<strong>${formattedDepositAmount}</strong>) is necessary to officially apply your bid and demonstrate your commitment. This amount will be deducted from your total bid if you win.
                         </p>
                         <p style="font-size:16px;line-height:24px;margin:0 0 24px 0;text-align:left;color:#664B2F">
                           <strong>⚠️ Important:</strong> This reservation is time-sensitive. Complete your payment within the next 15 minutes to avoid losing your bid position.
                         </p>
                         <a href="${bid.paymentLink}" style="line-height:1.5;text-decoration:none;display:inline-block;max-width:100%;mso-padding-alt:0px;font-size:16px;background-color:#AB8551;color:#fff;border-radius:0.5em;padding:16px 32px;font-weight:600" target="_blank">
-                          <span style="max-width:100%;display:inline-block;line-height:120%;mso-padding-alt:0px">Pay 10% Deposit Now</span>
+                          <span style="max-width:100%;display:inline-block;line-height:120%;mso-padding-alt:0px">Pay ${bid.depositPercentage}% Deposit Now</span>
                         </a>
                         <p style="font-size:14px;line-height:20px;margin:24px 0 0 0;text-align:left;color:#664B2F">
                           By completing this payment, you confirm your bid and agree to our terms of service. The payment is processed securely through Stripe.
@@ -324,6 +329,7 @@ export class EmailService {
       paymentLink: string;
       depositValue: number;
       minutesLeft?: number;
+      depositPercentage: number;
     },
   ) {
     const user = await this.db
@@ -373,7 +379,7 @@ export class EmailService {
                           Hello <strong>${user[0].firstName || user[0].email}</strong>,
                         </p>
                         <p style="font-size:16px;line-height:24px;margin:0 0 16px 0;text-align:left">
-                          You recently started placing a bid of <strong>${formattedAmount}</strong>. To confirm your bid, a deposit payment of <strong>${formattedDepositAmount}</strong> (10% of your bid) is required.
+                          You recently started placing a bid of <strong>${formattedAmount}</strong>. To confirm your bid, a deposit payment of <strong>${formattedDepositAmount}</strong> (${bid.depositPercentage}% of your bid) is required.
                         </p>
                         <p style="font-size:16px;line-height:24px;margin:0 0 16px 0;text-align:left">
                           <strong>What happens next:</strong>
