@@ -10,6 +10,7 @@ import {
   UploadedFile,
   Request,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { AttachmentsService } from './attachments.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
@@ -46,6 +47,19 @@ export class AttachmentsController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.attachmentsService.findOne(+id);
+  }
+
+  @Get(':id/approve')
+  async approveAttachment(
+    @Param('id') id: string,
+    @Query('token') token: string,
+  ) {
+    return await this.attachmentsService.approveOrDeny(+id, token, true);
+  }
+
+  @Get(':id/deny')
+  async denyAttachment(@Param('id') id: string, @Query('token') token: string) {
+    return await this.attachmentsService.approveOrDeny(+id, token, false);
   }
 
   @Patch(':id')

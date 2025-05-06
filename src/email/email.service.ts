@@ -240,7 +240,9 @@ export class EmailService {
   async sendPendingAttachmentVerificationEmail(
     userId: number,
     fileUrl: string,
-    fileOriginalName: string
+    fileOriginalName: string,
+    signedToken: string,
+    attachmentId: number,
   ) {
     const user = await this.db
       .select()
@@ -265,8 +267,8 @@ export class EmailService {
           undefined,
         userEmail: user[0].email,
         documentName: 'Document',
-        approveUrl: '#',
-        denyUrl: '#',
+        approveUrl: `http://localhost:9090/attachments/${attachmentId}/approve?token=${signedToken}`,
+        denyUrl: `http://localhost:9090/attachments/${attachmentId}/deny?token=${signedToken}`,
       }),
       attachments: [
         {

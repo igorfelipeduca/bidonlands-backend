@@ -33,5 +33,5 @@ export const attachmentsTable = pgTable('attachments', {
   advertId: integer().references(() => advertsTable.id, {
     onDelete: 'cascade',
   }),
-  isApproved: boolean().default(false),
+  isApproved: boolean().default(null),
 });

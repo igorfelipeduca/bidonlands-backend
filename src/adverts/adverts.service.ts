@@ -28,7 +28,7 @@ export class AdvertsService {
     const { data, error } = CreateAdvertDto.safeParse(body);
 
     if (error) {
-      throw new InternalServerErrorException(prettifyError(error));
+      throw new BadRequestException(prettifyError(error));
     }
 
     const dbUser = await this.db

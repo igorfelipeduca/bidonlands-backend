@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -21,6 +22,7 @@ import { bidIntentsTable } from 'src/drizzle/schema/bid-intents.schema';
 import { CreateBidIntentDto } from './dto/create-bid-intent.dto';
 import Stripe from 'stripe';
 import { EmailService } from 'src/email/email.service';
+import { attachmentsTable } from 'src/drizzle/schema/attachments.schema';
 
 @Injectable()
 export class BidsService {
@@ -151,7 +153,7 @@ export class BidsService {
     const { data, error } = CreateBidIntentDto.safeParse(createBidIntentDto);
 
     if (error) {
-      throw new InternalServerErrorException(prettifyError(error));
+      throw new BadRequestException(prettifyError(error));
     }
 
     const dbUser = await this.db
@@ -208,6 +210,30 @@ export class BidsService {
         `You have an active bid intent for this advert and amount. Please complete payment or wait for it to expire in ${Math.ceil(timeUntilExpires / 60000)} minutes before creating a new one.`,
       );
     } else {
+      const userDocs = await this.db
+        .select()
+        .from(attachmentsTable)
+        .where(eq(attachmentsTable.userId, userId));
+
+      const thereIsApprovedPhotoDoc = userDocs.some(
+        (d) => d.type === '2' && d.isApproved,
+      );
+
+      if (!userDocs.length) {
+        throw new UnauthorizedException(
+          'You must upload your Photo ID to bid.',
+        );
+      }
+
+      if (
+        !thereIsApprovedPhotoDoc &&
+        userDocs.filter((d) => d.type === '2').length > 0
+      ) {
+        throw new UnauthorizedException(
+          "Your Photo ID is still being processed. Please wait until it's approved.",
+        );
+      }
+
       if (data.amount < dbAdvert[0].minBidAmount) {
         throw new UnauthorizedException('Bid amount is less than the minimum.');
       }

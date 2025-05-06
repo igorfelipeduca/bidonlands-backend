@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
-import { z } from 'zod';
+import { Infer, z } from 'zod';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -20,6 +20,7 @@ import { UsersService } from 'src/users/users.service';
 import { emailTokenTable } from 'src/drizzle/schema/email-tokens.schema';
 import { ATTACHMENT_EXTENSIONS } from 'src/drizzle/schema/enums/attachment.enum';
 import { EmailService } from 'src/email/email.service';
+import { JwtService } from '@nestjs/jwt';
 
 dotenv.config();
 
@@ -40,6 +41,8 @@ export class AttachmentsService {
     private usersService: UsersService,
     @Inject(EmailService)
     private emailsService: EmailService,
+    @Inject(JwtService)
+    private jwtService: JwtService,
   ) {}
 
   async create(
@@ -142,10 +145,17 @@ export class AttachmentsService {
           .values(insertData)
           .returning();
 
+        const signedAttachmentToken = await this.jwtService.signAsync({
+          userId: userId,
+          attachmentId: newDbAttachment[0].id,
+        });
+
         await this.emailsService.sendPendingAttachmentVerificationEmail(
           userId,
           fileUrl,
           file.originalname,
+          signedAttachmentToken,
+          newDbAttachment[0].id,
         );
 
         return newDbAttachment;
@@ -219,6 +229,37 @@ export class AttachmentsService {
 
     return await this.db
       .delete(attachmentsTable)
+      .where(eq(attachmentsTable.id, id));
+  }
+
+  async approveOrDeny(id: number, token: string, approve: boolean) {
+    const dbAttachment = await this.db
+      .select()
+      .from(attachmentsTable)
+      .where(eq(attachmentsTable.id, id));
+
+    if (!dbAttachment.length) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    const tokenContent = this.jwtService.decode(token) as {
+      attachmentId: string;
+      userId: string;
+    };
+
+    if (!tokenContent.userId || !tokenContent.attachmentId) {
+      throw new BadRequestException(
+        'An invalid token was passed to the request',
+      );
+    }
+
+    const updateData = { isApproved: approve } as Partial<
+      InferInsertModel<typeof attachmentsTable>
+    >;
+
+    return await this.db
+      .update(attachmentsTable)
+      .set(updateData)
       .where(eq(attachmentsTable.id, id));
   }
 }

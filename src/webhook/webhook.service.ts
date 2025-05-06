@@ -1,13 +1,13 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { schema } from 'src/drizzle/schema';
-import z, { prettifyError } from 'zod';
+import z from 'zod';
 import { StripePaymentCompletedDto } from './dto/stripe-payment-completed.dto';
 import { usersTable } from 'src/drizzle/schema/users.schema';
 import { and, eq, InferInsertModel } from 'drizzle-orm';
@@ -30,9 +30,7 @@ export class WebhookService {
     const { data, error } = StripePaymentCompletedDto.safeParse(stripeRequest);
 
     if (error) {
-      console.error(prettifyError(error));
-
-      throw new InternalServerErrorException(prettifyError(error));
+      throw new BadRequestException(z.prettifyError(error));
     }
 
     const dbUser = await this.db
