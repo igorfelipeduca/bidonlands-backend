@@ -11,6 +11,7 @@ import { AdvertsModule } from './adverts/adverts.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { BidsModule } from './bids/bids.module';
 import { WebhookModule } from './webhook/webhook.module';
+import { GatewaysModule } from './gateways/gateways.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { WebhookModule } from './webhook/webhook.module';
     AdvertsModule,
     BidsModule,
     WebhookModule,
+    GatewaysModule
   ],
   controllers: [AppController],
   providers: [AppService],

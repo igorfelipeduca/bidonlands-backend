@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Inject,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -16,6 +15,7 @@ import { usersTable } from 'src/drizzle/schema/users.schema';
 import { eq, InferInsertModel } from 'drizzle-orm';
 import { advertsTable } from 'src/drizzle/schema/adverts.schema';
 import { getDepositPercentage } from './utils/get-deposit-percentage';
+import { Money } from '../lib/money-value-object';
 
 @Injectable()
 export class AdvertsService {
@@ -42,12 +42,14 @@ export class AdvertsService {
         'You can not create advertisements for other users.',
       );
 
-    if (body.amount < 100) {
+    const amount = new Money(body.amount, 'USD');
+    if (amount.getInCents() < 100) {
       throw new BadRequestException('The minimum accepted amount is $1');
     }
 
     const insertData = {
       ...data,
+      amount: amount.getInCents(),
       depositPercentage: getDepositPercentage(data.state),
     } as InferInsertModel<typeof advertsTable>;
 
@@ -97,9 +99,19 @@ export class AdvertsService {
     if (dbAdvert[0].userId !== userId)
       throw new UnauthorizedException("You can not edit anyone else's avert.");
 
+    let updateData = { ...data };
+    
+    if (typeof data.amount !== 'undefined') {
+      const amount = new Money(data.amount, 'USD');
+      updateData.amount = amount.getInCents();
+      if (amount.getInCents() < 100) {
+        throw new BadRequestException('The minimum accepted amount is $1');
+      }
+    }
+
     return await this.db
       .update(advertsTable)
-      .set(data)
+      .set(updateData)
       .where(eq(advertsTable.id, id))
       .returning();
   }

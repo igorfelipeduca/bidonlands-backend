@@ -23,6 +23,7 @@ import { CreateBidIntentDto } from './dto/create-bid-intent.dto';
 import Stripe from 'stripe';
 import { EmailService } from 'src/email/email.service';
 import { attachmentsTable } from 'src/drizzle/schema/attachments.schema';
+import { Money } from '../lib/money-value-object';
 
 @Injectable()
 export class BidsService {
@@ -71,7 +72,7 @@ export class BidsService {
       throw new NotFoundException('Bid intent not found');
     }
 
-    if (dbBidIntent[0].amount !== data.amount * 100) {
+    if (dbBidIntent[0].amount !== new Money(data.amount, 'USD').getInCents()) {
       throw new UnauthorizedException(
         'Bid intent and actual bid amounts does not match',
       );
@@ -81,15 +82,17 @@ export class BidsService {
       const dbAdvert = await this.db
         .select()
         .from(advertsTable)
-        .where(eq(advertsTable.id, data.advertId));
+        .where(eq(advertsTable.id, data.advertId))
+        .leftJoin(bidsTable, eq(bidsTable.advertId, advertsTable.id));
 
       if (!dbAdvert.length) {
         throw new NotFoundException('Advertisement not found');
       }
 
+      const advert = dbAdvert[0].adverts;
+
       const isAdvertExpired =
-        dbAdvert[0]?.expiresAt &&
-        new Date(dbAdvert[0].expiresAt).getTime() < Date.now();
+        advert?.expiresAt && new Date(advert.expiresAt).getTime() < Date.now();
 
       if (isAdvertExpired) {
         throw new UnauthorizedException(
@@ -97,7 +100,18 @@ export class BidsService {
         );
       }
 
-      data.amount = data.amount * 100;
+      const bids = dbAdvert.filter((row) => row.bids).map((row) => row.bids);
+      const highestBid = bids.length
+        ? Math.max(
+            ...bids.map((bid) =>
+              new Money(bid.amount, 'USD', { isCents: true }).getInCents(),
+            ),
+          )
+        : null;
+
+      console.log({ highestBid });
+
+      data.amount = new Money(data.amount, 'USD').getInCents();
 
       const newBid = await this.db
         .insert(bidsTable)
@@ -240,7 +254,9 @@ export class BidsService {
 
       const uniqueStripePrice = await stripe.prices.create({
         currency: 'usd',
-        unit_amount: (data.amount * dbAdvert[0].depositPercentage) / 100,
+        unit_amount: new Money(data.amount, 'USD', { isCents: true })
+          .percentage(dbAdvert[0].depositPercentage)
+          .getInCents(),
         product_data: {
           name: `[BID] ${dbAdvert[0]?.title ?? 'Unknown Advert'} (${dbAdvert[0].depositPercentage}% deposit)`,
         },
@@ -269,7 +285,9 @@ export class BidsService {
         stripePaymentLinkId: paymentLink.id,
         stripeUniquePrice: uniqueStripePrice.id,
         userId,
-        amount: (data.amount * dbAdvert[0].depositPercentage) / 100,
+        amount: new Money(data.amount, 'USD')
+          .percentage(dbAdvert[0].depositPercentage)
+          .getInCents(),
         advertId: data.advertId,
         bidAmount: data.amount,
       } as InferInsertModel<typeof bidIntentsTable>;
@@ -280,9 +298,11 @@ export class BidsService {
         .returning();
 
       await this.emailsService.sendBidIntentEmail(userId, {
-        amount: data.amount * 100,
+        amount: new Money(data.amount, 'USD').getInCents(),
         paymentLink: paymentLink.url,
-        depositValue: (data.amount * dbAdvert[0].depositPercentage) / 100,
+        depositValue: new Money(data.amount, 'USD')
+          .percentage(dbAdvert[0].depositPercentage)
+          .getInCents(),
         depositPercentage: dbAdvert[0].depositPercentage,
       });
 
@@ -386,7 +406,7 @@ export class BidsService {
       );
     }
 
-    data.amount = data.amount * 100;
+    data.amount = new Money(data.amount, 'USD').getInCents();
 
     const updatedBid = await this.db.update(bidsTable).set(data).returning();
 

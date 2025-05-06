@@ -14,6 +14,8 @@ import { and, eq, InferInsertModel } from 'drizzle-orm';
 import { bidIntentsTable } from 'src/drizzle/schema/bid-intents.schema';
 import { bidsTable } from 'src/drizzle/schema/bids.schema';
 import { EmailService } from 'src/email/email.service';
+import { BidsGateway } from 'src/gateways/bids.gateway';
+import { BidsService } from 'src/bids/bids.service';
 
 @Injectable()
 export class WebhookService {
@@ -22,6 +24,10 @@ export class WebhookService {
     private db: NodePgDatabase<typeof schema>,
     @Inject(EmailService)
     private emailService: EmailService,
+    @Inject(BidsGateway)
+    private bidsGateway: BidsGateway,
+    @Inject(BidsService)
+    private bidsService: BidsService,
   ) {}
 
   async onPaymentLinkSucceed(
@@ -66,7 +72,11 @@ export class WebhookService {
       active: true,
     } as InferInsertModel<typeof bidsTable>;
 
-    await this.db.insert(bidsTable).values(insertBidData);
+    const createdBid = await this.bidsService.create(
+      insertBidData,
+      bidIntent[0].userId,
+    );
+    
     await this.db
       .delete(bidIntentsTable)
       .where(eq(bidIntentsTable.id, bidIntent[0].id));
@@ -78,5 +88,12 @@ export class WebhookService {
         depositValue: bidIntent[0].amount,
       },
     );
+
+    this.bidsGateway.handleBid({
+      advertId: bidIntent[0].advertId,
+      amount: bidIntent[0].bidAmount,
+      userId: bidIntent[0].userId,
+      bidId: createdBid[0].id,
+    });
   }
 }
