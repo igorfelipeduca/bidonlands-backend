@@ -107,6 +107,15 @@ export class AuthService {
       stripeCustomerId: customer.id,
     } as Partial<InferInsertModel<typeof usersTable>>;
 
+    const emailTokenPayload = {
+      used: true,
+    } as Partial<InferInsertModel<typeof emailTokenTable>>;
+
+    await this.db
+      .update(emailTokenTable)
+      .set(emailTokenPayload)
+      .where(eq(emailTokenTable.token, token));
+
     return await this.db
       .update(usersTable)
       .set(updatePayload)

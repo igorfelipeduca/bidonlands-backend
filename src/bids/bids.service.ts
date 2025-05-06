@@ -72,7 +72,11 @@ export class BidsService {
       throw new NotFoundException('Bid intent not found');
     }
 
-    if (dbBidIntent[0].amount !== new Money(data.amount, 'USD').getInCents()) {
+    const dataAmountInCents = new Money(data.amount, 'USD', {
+      isCents: true,
+    }).getInCents();
+
+    if (dbBidIntent[0].bidAmount !== dataAmountInCents) {
       throw new UnauthorizedException(
         'Bid intent and actual bid amounts does not match',
       );
@@ -102,22 +106,44 @@ export class BidsService {
 
       const bids = dbAdvert.filter((row) => row.bids).map((row) => row.bids);
       const highestBid = bids.length
-        ? Math.max(
-            ...bids.map((bid) =>
-              new Money(bid.amount, 'USD', { isCents: true }).getInCents(),
-            ),
-          )
+        ? bids.reduce((maxBid, bid) => {
+            const bidAmount = new Money(bid.amount, 'USD', { isCents: true });
+            return !maxBid ||
+              bidAmount.getInCents() >
+                new Money(maxBid.amount, 'USD', { isCents: true }).getInCents()
+              ? bid
+              : maxBid;
+          }, null)
         : null;
 
-      console.log({ highestBid });
+      data.amount = dataAmountInCents;
 
-      data.amount = new Money(data.amount, 'USD').getInCents();
+      if (
+        highestBid &&
+        new Money(dataAmountInCents, 'USD', { isCents: true }).getInCents() >
+          new Money(highestBid.amount, 'USD', { isCents: true }).getInCents()
+      ) {
+        const formattedHighestBidAmount = new Money(highestBid.amount, 'USD', {
+          isCents: true,
+        }).format();
+
+        const formattedNewAmount = new Money(dataAmountInCents, 'USD', {
+          isCents: true,
+        }).format();
+
+        await this.emailsService.sendOutbidEmail(highestBid.userId, {
+          amount: dataAmountInCents,
+          highestBid: formattedNewAmount,
+          formattedAmount: formattedHighestBidAmount,
+          websiteUrl: `https://www.deedbid.com/advert/${data.advertId}`,
+        });
+      }
 
       const newBid = await this.db
         .insert(bidsTable)
         .values({
           advertId: data.advertId,
-          amount: data.amount,
+          amount: dataAmountInCents,
           userId: userId,
         })
         .returning();
@@ -188,6 +214,10 @@ export class BidsService {
       throw new NotFoundException('Advert not found');
     }
 
+    const dataAmountInCents = new Money(data.amount, 'USD', {
+      isCents: true,
+    }).getInCents();
+
     const existentBidIntents = await this.db
       .select()
       .from(bidIntentsTable)
@@ -254,7 +284,7 @@ export class BidsService {
 
       const uniqueStripePrice = await stripe.prices.create({
         currency: 'usd',
-        unit_amount: new Money(data.amount, 'USD', { isCents: true })
+        unit_amount: new Money(dataAmountInCents, 'USD', { isCents: true })
           .percentage(dbAdvert[0].depositPercentage)
           .getInCents(),
         product_data: {
@@ -285,11 +315,11 @@ export class BidsService {
         stripePaymentLinkId: paymentLink.id,
         stripeUniquePrice: uniqueStripePrice.id,
         userId,
-        amount: new Money(data.amount, 'USD')
+        amount: new Money(dataAmountInCents, 'USD', { isCents: true })
           .percentage(dbAdvert[0].depositPercentage)
           .getInCents(),
         advertId: data.advertId,
-        bidAmount: data.amount,
+        bidAmount: dataAmountInCents,
       } as InferInsertModel<typeof bidIntentsTable>;
 
       const newBidIntent = await this.db
@@ -298,9 +328,9 @@ export class BidsService {
         .returning();
 
       await this.emailsService.sendBidIntentEmail(userId, {
-        amount: new Money(data.amount, 'USD').getInCents(),
+        amount: dataAmountInCents,
         paymentLink: paymentLink.url,
-        depositValue: new Money(data.amount, 'USD')
+        depositValue: new Money(dataAmountInCents, 'USD', { isCents: true })
           .percentage(dbAdvert[0].depositPercentage)
           .getInCents(),
         depositPercentage: dbAdvert[0].depositPercentage,

@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { AdvertsService } from './adverts.service';
 import { CreateAdvertDto } from './dto/create-advert.dto';
@@ -33,13 +34,23 @@ export class AdvertsController {
   }
 
   @Get()
-  findAll() {
-    return this.advertsService.findAll();
+  findAll(@Query('page_size') page_size?: string) {
+    const size = page_size ? parseInt(page_size, 10) : 20;
+    return this.advertsService.findAll(size);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.advertsService.findOne(+id);
+  }
+
+  @Post('seed')
+  @UseGuards(JwtAuthGuard)
+  seedAdverts(
+    @Request() req: AuthenticatedRequest,
+    @Query('qty') quantity: string,
+  ) {
+    return this.advertsService.seedAdverts(req.user.id, +quantity);
   }
 
   @Roles(Role.Admin)

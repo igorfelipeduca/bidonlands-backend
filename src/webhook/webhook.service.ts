@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
@@ -33,67 +34,79 @@ export class WebhookService {
   async onPaymentLinkSucceed(
     stripeRequest: z.infer<typeof StripePaymentCompletedDto>,
   ) {
-    const { data, error } = StripePaymentCompletedDto.safeParse(stripeRequest);
+    try {
+      const { data, error } =
+        StripePaymentCompletedDto.safeParse(stripeRequest);
 
-    if (error) {
-      throw new BadRequestException(z.prettifyError(error));
-    }
+      if (error) {
+        throw new BadRequestException(z.prettifyError(error));
+      }
 
-    const dbUser = await this.db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, Number(data.data.object.metadata.userId)));
+      const dbUser = await this.db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, Number(data.data.object.metadata.userId)));
 
-    if (!dbUser.length) {
-      throw new NotFoundException('User not found');
-    }
+      if (!dbUser.length) {
+        throw new NotFoundException('User not found');
+      }
 
-    const bidIntent = await this.db
-      .select()
-      .from(bidIntentsTable)
-      .where(
-        and(
-          eq(
-            bidIntentsTable.advertId,
-            Number(data.data.object.metadata.advertId),
+      const bidIntent = await this.db
+        .select()
+        .from(bidIntentsTable)
+        .where(
+          and(
+            eq(
+              bidIntentsTable.advertId,
+              Number(data.data.object.metadata.advertId),
+            ),
+            eq(
+              bidIntentsTable.userId,
+              Number(data.data.object.metadata.userId),
+            ),
           ),
-          eq(bidIntentsTable.userId, Number(data.data.object.metadata.userId)),
-        ),
+        );
+
+      if (!bidIntent.length) {
+        throw new NotFoundException('Bid intent not found');
+      }
+
+      const insertBidData = {
+        advertId: bidIntent[0].advertId,
+        amount: bidIntent[0].bidAmount,
+        userId: bidIntent[0].userId,
+        bidIntentId: bidIntent[0].id,
+        active: true,
+      } as InferInsertModel<typeof bidsTable>;
+
+      const createdBid = await this.bidsService.create(
+        insertBidData,
+        bidIntent[0].userId,
       );
 
-    if (!bidIntent.length) {
-      throw new NotFoundException('Bid intent not found');
-    }
+      await this.db
+        .delete(bidIntentsTable)
+        .where(eq(bidIntentsTable.id, bidIntent[0].id));
 
-    const insertBidData = {
-      advertId: bidIntent[0].advertId,
-      amount: bidIntent[0].bidAmount,
-      userId: bidIntent[0].userId,
-      active: true,
-    } as InferInsertModel<typeof bidsTable>;
+      await this.emailService.sendBidDepositConfirmationEmail(
+        Number(data.data.object.metadata.userId),
+        {
+          amount: bidIntent[0].bidAmount,
+          depositValue: bidIntent[0].amount,
+        },
+      );
 
-    const createdBid = await this.bidsService.create(
-      insertBidData,
-      bidIntent[0].userId,
-    );
-    
-    await this.db
-      .delete(bidIntentsTable)
-      .where(eq(bidIntentsTable.id, bidIntent[0].id));
-
-    await this.emailService.sendBidDepositConfirmationEmail(
-      Number(data.data.object.metadata.userId),
-      {
+      this.bidsGateway.handleBid({
+        advertId: bidIntent[0].advertId,
         amount: bidIntent[0].bidAmount,
-        depositValue: bidIntent[0].amount,
-      },
-    );
-
-    this.bidsGateway.handleBid({
-      advertId: bidIntent[0].advertId,
-      amount: bidIntent[0].bidAmount,
-      userId: bidIntent[0].userId,
-      bidId: createdBid[0].id,
-    });
+        userId: bidIntent[0].userId,
+        bidId: createdBid[0].id,
+      });
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException(
+        'Error while intercepting the completed payment signal from Stripe',
+      );
+    }
   }
 }

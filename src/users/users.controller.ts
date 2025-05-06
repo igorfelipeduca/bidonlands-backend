@@ -34,9 +34,10 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  @Get()
+  findOne(@Query('q') q: string) {
+    const query = /^\d+$/.test(q) ? +q : q;
+    return this.usersService.findOne(query);
   }
 
   @Patch(':id')

@@ -13,6 +13,8 @@ import { SendBidIntentEmail } from './emails/send-bid-intent.email';
 import { ExistentBidEmail } from './emails/existent-bid.email';
 import { BidDepositConfirmationEmail } from './emails/bid-deposit-confirmation.email';
 import { PendingAttachmentVerificationEmail } from './emails/pending-attachment-verification.email';
+import { OutbidEmail } from './emails/outbid.email';
+import { Money } from '../lib/money-value-object';
 
 @Injectable()
 export class EmailService {
@@ -130,15 +132,12 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(bid.amount / 100);
-
-    const formattedDepositAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(bid.depositValue / 100);
+    const formattedAmount = new Money(bid.amount, 'USD', {
+      isCents: true,
+    }).format();
+    const formattedDepositAmount = new Money(bid.depositValue, 'USD', {
+      isCents: true,
+    }).format();
 
     const sentEmail = await this.resend.emails.send({
       from: 'BidOnLands <igor@duca.dev>',
@@ -174,15 +173,12 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(bid.amount / 100);
-
-    const formattedDepositAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(bid.depositValue / 100);
+    const formattedAmount = new Money(bid.amount, 'USD', {
+      isCents: true,
+    }).format();
+    const formattedDepositAmount = new Money(bid.depositValue, 'USD', {
+      isCents: true,
+    }).format();
 
     const sentEmail = await this.resend.emails.send({
       from: 'BidOnLands <igor@duca.dev>',
@@ -212,15 +208,12 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(bid.amount / 100);
-
-    const formattedDepositAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(bid.depositValue / 100);
+    const formattedAmount = new Money(bid.amount, 'USD', {
+      isCents: true,
+    }).format();
+    const formattedDepositAmount = new Money(bid.depositValue, 'USD', {
+      isCents: true,
+    }).format();
 
     const sentEmail = await this.resend.emails.send({
       from: 'BidOnLands <igor@duca.dev>',
@@ -279,6 +272,47 @@ export class EmailService {
     });
 
     console.log({ sentEmail });
+
+    return sentEmail;
+  }
+
+  async sendOutbidEmail(
+    userId: number,
+    {
+      amount,
+      highestBid,
+      formattedAmount,
+      websiteUrl,
+    }: {
+      amount: number;
+      highestBid: string;
+      formattedAmount: string;
+      websiteUrl: string;
+    },
+  ) {
+    const user = await this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    if (!user || !user.length) {
+      throw new NotFoundException('User not found');
+    }
+
+    const sentEmail = await this.resend.emails.send({
+      from: 'BidOnLands <igor@duca.dev>',
+      to: [user[0].email],
+      subject: `You've Been Outbid`,
+      html: OutbidEmail({
+        user,
+        bid: {
+          amount,
+          highestBid,
+        },
+        formattedAmount,
+        websiteUrl,
+      }),
+    });
 
     return sentEmail;
   }

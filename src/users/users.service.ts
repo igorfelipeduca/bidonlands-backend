@@ -72,8 +72,17 @@ export class UsersService {
     return await this.db.select().from(schema.usersTable);
   }
 
-  async findOne(id: number) {
-    return await this.db.select().from(usersTable).where(eq(usersTable.id, id));
+  async findOne(query: number | string) {
+    let whereClause: ReturnType<typeof eq>;
+
+    if (typeof query === 'number') {
+      whereClause = eq(usersTable.id, query);
+    } else {
+      whereClause = eq(usersTable.email, query);
+    }
+    
+    const result = await this.db.select().from(usersTable).where(whereClause);
+    return result[0];
   }
 
   async update(
