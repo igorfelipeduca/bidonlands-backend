@@ -1,4 +1,10 @@
-import { integer, pgTable, varchar, timestamp } from 'drizzle-orm/pg-core';
+import {
+  integer,
+  pgTable,
+  varchar,
+  timestamp,
+  boolean,
+} from 'drizzle-orm/pg-core';
 import { ATTACHMENT_TYPE_CHOICES } from './enums/attachment.enum';
 import { advertsTable } from './adverts.schema';
 import { usersTable } from './users.schema';
@@ -27,4 +33,5 @@ export const attachmentsTable = pgTable('attachments', {
   advertId: integer().references(() => advertsTable.id, {
     onDelete: 'cascade',
   }),
+  isApproved: boolean().default(false),
 });

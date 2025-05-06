@@ -19,6 +19,7 @@ import { eq, InferInsertModel } from 'drizzle-orm';
 import { UsersService } from 'src/users/users.service';
 import { emailTokenTable } from 'src/drizzle/schema/email-tokens.schema';
 import { ATTACHMENT_EXTENSIONS } from 'src/drizzle/schema/enums/attachment.enum';
+import { EmailService } from 'src/email/email.service';
 
 dotenv.config();
 
@@ -37,6 +38,8 @@ export class AttachmentsService {
     private db: NodePgDatabase<typeof schema>,
     @Inject(UsersService)
     private usersService: UsersService,
+    @Inject(EmailService)
+    private emailsService: EmailService,
   ) {}
 
   async create(
@@ -138,6 +141,12 @@ export class AttachmentsService {
           .insert(attachmentsTable)
           .values(insertData)
           .returning();
+
+        await this.emailsService.sendPendingAttachmentVerificationEmail(
+          userId,
+          fileUrl,
+          file.originalname,
+        );
 
         return newDbAttachment;
       } catch (err) {
