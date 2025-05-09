@@ -21,36 +21,20 @@ export const CreateAdvertDto = z.object({
     [
       SALES_TYPE_CHOICES.AUCTION_ONLINE,
       SALES_TYPE_CHOICES.AUCTION_LIVE,
-      SALES_TYPE_CHOICES.AUCTION_SILENT,
       SALES_TYPE_CHOICES.FIXED_PRICE,
-      SALES_TYPE_CHOICES.NEGOTIATED_SALE,
-      SALES_TYPE_CHOICES.BUY_NOW,
-      SALES_TYPE_CHOICES.PRIVATE_TREATY,
-      SALES_TYPE_CHOICES.SEALED_BID,
-      SALES_TYPE_CHOICES.DUTCH_AUCTION,
-      SALES_TYPE_CHOICES.REVERSE_AUCTION,
+      // SALES_TYPE_CHOICES.BUY_NOW,
+      // SALES_TYPE_CHOICES.AUCTION_SILENT,
+      // SALES_TYPE_CHOICES.NEGOTIATED_SALE,
+      // SALES_TYPE_CHOICES.PRIVATE_TREATY,
+      // SALES_TYPE_CHOICES.SEALED_BID,
+      // SALES_TYPE_CHOICES.DUTCH_AUCTION,
+      // SALES_TYPE_CHOICES.REVERSE_AUCTION,
     ],
     { error: 'Invalid or missing sales type' },
   ),
   category: z.enum([CATEGORY_CHOICES.ANTIQUES, CATEGORY_CHOICES.REAL_ESTATE], {
     error: 'Invalid or missing category',
   }),
-  adsNumber: z
-    .number({ error: 'Ads number must be a number' })
-    .int({ error: 'Ads number must be an integer' })
-    .optional(),
-  adsType: z.enum(
-    [
-      ADS_TYPE_CHOICES.SUBJECT_TO_SELLER_CONFIRMATION,
-      ADS_TYPE_CHOICES.BUY_NOW,
-      ADS_TYPE_CHOICES.MAKE_OFFER,
-      ADS_TYPE_CHOICES.CLASSIFIED_AD,
-      ADS_TYPE_CHOICES.SPONSORED_LISTING,
-      ADS_TYPE_CHOICES.FEATURED_LISTING,
-      ADS_TYPE_CHOICES.AUCTION_AD,
-    ],
-    { error: 'Invalid or missing ads type' },
-  ),
   condition: z.enum(
     [
       CONDITION_CHOICES.NEW,
@@ -93,7 +77,8 @@ export const CreateAdvertDto = z.object({
     .int({ error: 'Administrator fee must be an integer in cents' })
     .min(100, { error: 'Administrator fee must be at least 100 cents' })
     .optional(),
-  expiresAt: z.coerce.date({ error: 'Invalid or missing expiration date' }),
+  endsAt: z.coerce.date({ error: 'Invalid or missing end date' }),
+  startsAt: z.coerce.date({ error: 'Invalid or missing start date' }),
   state: z
     .string({ error: 'State is required' })
     .max(100, { error: 'State must not exceed 100 characters' })
@@ -143,22 +128,6 @@ export const CreateAdvertDto = z.object({
     .string({ error: 'Zip code is required' })
     .max(20, { error: 'Zip code must not exceed 20 characters' })
     .default(''),
-  currentAmount: z
-    .number({ error: 'Current amount must be a number' })
-    .int({ error: 'Current amount must be an integer' })
-    .optional(),
-  highestBid: z
-    .number({ error: 'Highest bid must be a number' })
-    .int({ error: 'Highest bid must be an integer' })
-    .optional(),
-  userHighestBidId: z
-    .number({ error: 'User highest bid ID must be a number' })
-    .int({ error: 'User highest bid ID must be an integer' })
-    .optional(),
-  slug: z
-    .string({ error: 'Slug must be a string' })
-    .max(255, { error: 'Slug must not exceed 255 characters' })
-    .optional(),
   minBidAmount: z
     .number({ error: 'Min. bid amount must be a number' })
     .min(100, { error: 'The min. bid amount must be at least 1 dollar.' })

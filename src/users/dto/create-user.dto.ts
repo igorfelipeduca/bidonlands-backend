@@ -33,12 +33,6 @@ export const CreateUserDto = z.object({
     .string()
     .max(20, { error: 'Zip code must be 20 characters or less' })
     .optional(),
-  subscriptionStatusDisplay: z
-    .string()
-    .max(30, {
-      error: 'Subscription status display must be 30 characters or less',
-    })
-    .optional(),
   country: z
     .string()
     .max(100, { error: 'Country must be 100 characters or less' })
@@ -72,19 +66,6 @@ export const CreateUserDto = z.object({
     .email({ error: 'Email is invalid' })
     .max(255, { error: 'Email must be 255 characters or less' })
     .optional(),
-  customerId: z
-    .string()
-    .max(255, { error: 'Customer ID must be 255 characters or less' })
-    .optional(),
-  subscriptionId: z
-    .string()
-    .max(255, { error: 'Subscription ID must be 255 characters or less' })
-    .optional(),
-  subscriptionStatus: z
-    .string()
-    .max(30, { error: 'Subscription status must be 30 characters or less' })
-    .optional()
-    .default('processing'),
   password: z
     .string()
     .max(255, { error: 'Password must be 255 characters or less' }),

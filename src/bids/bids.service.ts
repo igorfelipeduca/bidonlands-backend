@@ -18,8 +18,6 @@ import { advertsTable } from 'src/drizzle/schema/adverts.schema';
 import { bidsTable } from 'src/drizzle/schema/bids.schema';
 import { UsersService } from 'src/users/users.service';
 import { emailTokenTable } from 'src/drizzle/schema/email-tokens.schema';
-import { bidIntentsTable } from 'src/drizzle/schema/bid-intents.schema';
-import { CreateBidIntentDto } from './dto/create-bid-intent.dto';
 import Stripe from 'stripe';
 import { EmailService } from 'src/email/email.service';
 import { attachmentsTable } from 'src/drizzle/schema/attachments.schema';
@@ -63,24 +61,9 @@ export class BidsService {
       );
     }
 
-    const dbBidIntent = await this.db
-      .select()
-      .from(bidIntentsTable)
-      .where(eq(bidIntentsTable.id, data.bidIntentId));
-
-    if (!dbBidIntent.length) {
-      throw new NotFoundException('Bid intent not found');
-    }
-
     const dataAmountInCents = new Money(data.amount, 'USD', {
       isCents: true,
     }).getInCents();
-
-    if (dbBidIntent[0].bidAmount !== dataAmountInCents) {
-      throw new UnauthorizedException(
-        'Bid intent and actual bid amounts does not match',
-      );
-    }
 
     if (dbUser[0].emailVerified) {
       const dbAdvert = await this.db
@@ -96,7 +79,7 @@ export class BidsService {
       const advert = dbAdvert[0].adverts;
 
       const isAdvertExpired =
-        advert?.expiresAt && new Date(advert.expiresAt).getTime() < Date.now();
+        advert?.endsAt && new Date(advert.endsAt).getTime() < Date.now();
 
       if (isAdvertExpired) {
         throw new UnauthorizedException(
@@ -182,191 +165,6 @@ export class BidsService {
         }
       }
     }
-  }
-
-  async createBidIntent(
-    createBidIntentDto: z.infer<typeof CreateBidIntentDto>,
-    userId: number,
-  ) {
-    const stripe = new Stripe(process.env.STRIPE_KEY ?? '');
-
-    const { data, error } = CreateBidIntentDto.safeParse(createBidIntentDto);
-
-    if (error) {
-      throw new BadRequestException(prettifyError(error));
-    }
-
-    const dbUser = await this.db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, userId));
-
-    if (!dbUser.length) {
-      throw new NotFoundException('User not found');
-    }
-
-    const dbAdvert = await this.db
-      .select()
-      .from(advertsTable)
-      .where(eq(advertsTable.id, data.advertId));
-
-    if (!dbAdvert.length) {
-      throw new NotFoundException('Advert not found');
-    }
-
-    const dataAmountInCents = new Money(data.amount, 'USD', {
-      isCents: true,
-    }).getInCents();
-
-    const existentBidIntents = await this.db
-      .select()
-      .from(bidIntentsTable)
-      .where(
-        and(
-          eq(bidIntentsTable.advertId, data.advertId),
-          eq(bidIntentsTable.amount, bidIntentsTable.amount),
-          eq(bidIntentsTable.userId, bidIntentsTable.userId),
-        ),
-      );
-
-    const notExpiredBidIntents = existentBidIntents.filter(
-      (b) => new Date(b.expiresAt).getTime() > Date.now(),
-    );
-
-    if (notExpiredBidIntents.length) {
-      const mostRecentBidIntent = notExpiredBidIntents.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )[0];
-
-      const timeUntilExpires =
-        new Date(mostRecentBidIntent.expiresAt).getTime() - Date.now();
-
-      await this.emailsService.sendExistingBidIntentEmail(userId, {
-        amount: dbAdvert[0].amount,
-        depositValue: mostRecentBidIntent.amount,
-        paymentLink: mostRecentBidIntent.stripePaymentLink,
-        minutesLeft: Math.ceil(timeUntilExpires / 60000),
-        depositPercentage: dbAdvert[0].depositPercentage,
-      });
-
-      throw new UnauthorizedException(
-        `You have an active bid intent for this advert and amount. Please complete payment or wait for it to expire in ${Math.ceil(timeUntilExpires / 60000)} minutes before creating a new one.`,
-      );
-    } else {
-      const userDocs = await this.db
-        .select()
-        .from(attachmentsTable)
-        .where(eq(attachmentsTable.userId, userId));
-
-      const thereIsApprovedPhotoDoc = userDocs.some(
-        (d) => d.type === '2' && d.isApproved,
-      );
-
-      if (!userDocs.length) {
-        throw new UnauthorizedException(
-          'You must upload your Photo ID to bid.',
-        );
-      }
-
-      if (
-        !thereIsApprovedPhotoDoc &&
-        userDocs.filter((d) => d.type === '2').length > 0
-      ) {
-        throw new UnauthorizedException(
-          "Your Photo ID is still being processed. Please wait until it's approved.",
-        );
-      }
-
-      if (data.amount < dbAdvert[0].minBidAmount) {
-        throw new UnauthorizedException('Bid amount is less than the minimum.');
-      }
-
-      const uniqueStripePrice = await stripe.prices.create({
-        currency: 'usd',
-        unit_amount: new Money(dataAmountInCents, 'USD', { isCents: true })
-          .percentage(dbAdvert[0].depositPercentage)
-          .getInCents(),
-        product_data: {
-          name: `[BID] ${dbAdvert[0]?.title ?? 'Unknown Advert'} (${dbAdvert[0].depositPercentage}% deposit)`,
-        },
-      });
-
-      const paymentLink = await stripe.paymentLinks.create({
-        line_items: [
-          {
-            price: uniqueStripePrice.id,
-            quantity: 1,
-          },
-        ],
-        payment_intent_data: {
-          metadata: {
-            advertId: data.advertId,
-            userId: userId,
-          },
-        },
-      });
-
-      console.log({ paymentLink });
-
-      const insertData = {
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-        stripePaymentLink: paymentLink.url,
-        stripePaymentLinkId: paymentLink.id,
-        stripeUniquePrice: uniqueStripePrice.id,
-        userId,
-        amount: new Money(dataAmountInCents, 'USD', { isCents: true })
-          .percentage(dbAdvert[0].depositPercentage)
-          .getInCents(),
-        advertId: data.advertId,
-        bidAmount: dataAmountInCents,
-      } as InferInsertModel<typeof bidIntentsTable>;
-
-      const newBidIntent = await this.db
-        .insert(bidIntentsTable)
-        .values(insertData)
-        .returning();
-
-      await this.emailsService.sendBidIntentEmail(userId, {
-        amount: dataAmountInCents,
-        paymentLink: paymentLink.url,
-        depositValue: new Money(dataAmountInCents, 'USD', { isCents: true })
-          .percentage(dbAdvert[0].depositPercentage)
-          .getInCents(),
-        depositPercentage: dbAdvert[0].depositPercentage,
-      });
-
-      return newBidIntent;
-    }
-  }
-
-  async findUsersBidIntents(userId: number) {
-    const stripe = new Stripe(process.env.STRIPE_KEY ?? '');
-
-    const dbUser = await this.db
-      .select()
-      .from(bidIntentsTable)
-      .where(eq(bidIntentsTable.userId, userId));
-
-    if (!dbUser.length) throw new NotFoundException('User not found');
-
-    const bids = await this.db
-      .select()
-      .from(bidIntentsTable)
-      .where(eq(bidIntentsTable.userId, userId));
-
-    for (const bid of bids) {
-      const isExpired = new Date(bid.expiresAt).getTime() < Date.now();
-
-      if (isExpired) {
-        // deactivating payment link on stripe
-        await stripe.paymentLinks.update(bid.stripePaymentLinkId, {
-          active: false,
-        });
-      }
-    }
-
-    return bids;
   }
 
   async findAll() {

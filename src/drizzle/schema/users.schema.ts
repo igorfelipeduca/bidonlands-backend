@@ -29,7 +29,6 @@ export const usersTable = pgTable('users', {
   city: varchar({ length: 100 }).notNull().default(''),
   state: varchar({ length: 100 }).notNull().default(''),
   zipCode: varchar({ length: 20 }).notNull().default(''),
-  subscriptionStatusDisplay: varchar({ length: 30 }).notNull().default(''),
   country: varchar({ length: 100 }).notNull().default(''),
   phoneNumber: varchar({ length: 15 }).notNull().default(''),
   birthDate: varchar({ length: 255 }).notNull().default(''),
@@ -51,21 +50,6 @@ export const usersTable = pgTable('users', {
   account: varchar({ length: 20 }).notNull().default(''),
   email: varchar({ length: 255 }).notNull().unique(),
   emailVerified: boolean().notNull().default(false),
-  customerId: varchar({ length: 255 }).notNull().default(''),
-  subscriptionId: varchar({ length: 255 }).notNull().default(''),
-  subscriptionStatus: varchar({
-    length: 30,
-    enum: [
-      'succeeded',
-      'requires_action',
-      'requires_payment_method',
-      'processing',
-      'canceled',
-      'failed',
-    ],
-  })
-    .notNull()
-    .default(SUBSCRIPTION_STATUS_CHOICES.PROCESSING),
   password: varchar({ length: 255 }).notNull().default(''),
   stripeCustomerId: varchar({ length: 255 }).notNull().default('').unique(),
   createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),

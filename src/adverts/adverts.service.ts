@@ -163,7 +163,9 @@ export class AdvertsService {
       throw new BadRequestException('No user found for this auth token');
     }
 
-    if (dbUser[0].email !== 'igorducca@gmail.com') {
+    const allowedList = process.env.ADMIN_EMAILS.split(",");
+
+    if (!allowedList.includes(dbUser[0].email)) {
       throw new UnauthorizedException("You can't perform this action");
     }
 

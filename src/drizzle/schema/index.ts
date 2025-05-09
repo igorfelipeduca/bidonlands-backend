@@ -3,7 +3,6 @@ import * as emailToken from './email-tokens.schema';
 import * as attachment from './attachments.schema';
 import * as bids from './bids.schema';
 import * as adverts from './adverts.schema';
-import * as bidIndents from './bid-intents.schema';
 
 export const schema = {
   usersTable: users.usersTable,
@@ -11,5 +10,4 @@ export const schema = {
   attachmentsTable: attachment.attachmentsTable,
   advertsTable: adverts.advertsTable,
   bidsTable: bids.bidsTable,
-  bidIntents: bidIndents.bidIntentsTable,
 };

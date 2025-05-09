@@ -15,7 +15,6 @@ import { UpdateBidDto } from './dto/update-bid.dto';
 import z from 'zod';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { AuthenticatedRequest } from 'src/guards/roles.guard';
-import { CreateBidIntentDto } from './dto/create-bid-intent.dto';
 
 @Controller('bids')
 export class BidsController {
@@ -28,21 +27,6 @@ export class BidsController {
     @Request() req: AuthenticatedRequest,
   ) {
     return this.bidsService.create(createBidDto, req.user.id);
-  }
-
-  @Post('/intents')
-  @UseGuards(JwtAuthGuard)
-  async createBidIntent(
-    @Body() createBidIntent: z.infer<typeof CreateBidIntentDto>,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return await this.bidsService.createBidIntent(createBidIntent, req.user.id);
-  }
-
-  @Get('/intents')
-  @UseGuards(JwtAuthGuard)
-  async listUserBidIntents(@Request() req: AuthenticatedRequest) {
-    return await this.bidsService.findUsersBidIntents(req.user.id);
   }
 
   @Get()
