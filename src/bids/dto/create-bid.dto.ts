@@ -8,5 +8,4 @@ export const CreateBidDto = z.object({
     .min(100, {
       error: 'The minimum amount for a bid is 100 cents',
     }),
-  bidIntentId: z.number({ error: 'Bid intent id must be a number' }),
 });

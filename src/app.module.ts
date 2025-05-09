@@ -8,7 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { EmailModule } from './email/email.module';
 import { AdvertsModule } from './adverts/adverts.module';
-import { AttachmentsModule } from './attachments/attachments.module';
+import { DocumentsModule } from './documents/documents.module';
 import { BidsModule } from './bids/bids.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { GatewaysModule } from './gateways/gateways.module';
@@ -32,11 +32,11 @@ import { GatewaysModule } from './gateways/gateways.module';
     ConfigModule.forRoot(),
     AuthModule,
     EmailModule,
-    AttachmentsModule,
+    DocumentsModule,
     AdvertsModule,
     BidsModule,
     WebhookModule,
-    GatewaysModule
+    GatewaysModule,
   ],
   controllers: [AppController],
   providers: [AppService],

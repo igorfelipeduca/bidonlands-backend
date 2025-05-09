@@ -12,7 +12,7 @@ import {
   ROLE_CHOICES,
   CONTACT_TITLE_CHOICES,
 } from './enums/user.enum';
-import { SUBSCRIPTION_STATUS_CHOICES } from './enums/subscription.enum';
+import { DocumentType } from './documents.schema';
 
 export const usersTable = pgTable('users', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -59,4 +59,6 @@ export const usersTable = pgTable('users', {
     .$onUpdate(() => new Date()),
 });
 
-export type User = typeof usersTable.$inferSelect;
+export type UserType = typeof usersTable.$inferSelect & {
+  documents?: DocumentType[]
+};

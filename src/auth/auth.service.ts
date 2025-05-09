@@ -9,7 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
-import { User, usersTable } from 'src/drizzle/schema/users.schema';
+import { UserType, usersTable } from 'src/drizzle/schema/users.schema';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { schema } from '../drizzle/schema/index';
 import { eq, InferInsertModel } from 'drizzle-orm';
@@ -28,7 +28,7 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string) {
-    const users = await this.usersService.findAll();
+    const users = (await this.usersService.findAll()) as UserType[];
     const user = users.find((u) => u.email === email);
 
     if (!user) {
@@ -45,7 +45,7 @@ export class AuthService {
     return result;
   }
 
-  async login(user: Partial<User>) {
+  async login(user: Partial<UserType>) {
     const payload = {
       email: user.email,
       sub: user.id,
@@ -57,7 +57,7 @@ export class AuthService {
     };
   }
 
-  async generateValidateEmailToken(user: User) {
+  async generateValidateEmailToken(user: UserType) {
     const tokenPayload = {
       email: user.email,
     };

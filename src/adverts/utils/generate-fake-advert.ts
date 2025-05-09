@@ -25,6 +25,12 @@ export function generateFakeAdvert({
   const condition = randomEnumValue(conditionChoices);
   const status = randomEnumValue(statusChoices);
 
+  // Ensure endsAt is never null and always a valid Date
+  const endsAt = faker.date.soon({ days: 90 });
+  if (!endsAt) {
+    throw new Error('Failed to generate a valid endsAt date');
+  }
+
   return {
     title: faker.commerce.productName(),
     description: faker.lorem.paragraph(),
@@ -38,7 +44,7 @@ export function generateFakeAdvert({
     additionalInformation: faker.lorem.sentence(),
     referenceId: faker.number.int({ min: 1, max: 999999 }),
     administratorFee: faker.number.int({ min: 100, max: 10000 }),
-    endsAt: faker.date.soon({ days: 90 }),
+    endsAt,
     state: stateValue,
     city: faker.location.city(),
     status,
@@ -52,4 +58,4 @@ export function generateFakeAdvert({
     slug: faker.helpers.slugify(faker.commerce.productName()).toLowerCase(),
     minBidAmount: faker.number.int({ min: 100, max: 100000 }),
   };
-} 
+}

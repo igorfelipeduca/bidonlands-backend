@@ -5,20 +5,20 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { UpdateAttachmentDto } from './dto/update-attachment.dto';
-import { CreateAttachmentDto } from './dto/create-attachment.dto';
+import { UpdateDocumentDto } from './dto/update-document.dto';
+import { CreateDocumentDto } from './dto/create-document.dto';
 import { Infer, z } from 'zod';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../drizzle/schema/index';
-import { attachmentsTable } from 'src/drizzle/schema/attachments.schema';
+import { documentsTable } from 'src/drizzle/schema/documents.schema';
 import * as dotenv from 'dotenv';
 import { usersTable } from 'src/drizzle/schema/users.schema';
 import { eq, InferInsertModel } from 'drizzle-orm';
 import { UsersService } from 'src/users/users.service';
 import { emailTokenTable } from 'src/drizzle/schema/email-tokens.schema';
-import { ATTACHMENT_EXTENSIONS } from 'src/drizzle/schema/enums/attachment.enum';
+import { DOCUMENT_EXTENSIONS } from 'src/drizzle/schema/enums/document.enum';
 import { EmailService } from 'src/email/email.service';
 import { JwtService } from '@nestjs/jwt';
 
@@ -33,7 +33,7 @@ const s3Client = new S3Client({
 });
 
 @Injectable()
-export class AttachmentsService {
+export class DocumentsService {
   constructor(
     @Inject(DrizzleAsyncProvider)
     private db: NodePgDatabase<typeof schema>,
@@ -46,11 +46,11 @@ export class AttachmentsService {
   ) {}
 
   async create(
-    body: z.infer<typeof CreateAttachmentDto>,
+    body: z.infer<typeof CreateDocumentDto>,
     file: Express.Multer.File,
     userId: number,
   ) {
-    const { data, error } = CreateAttachmentDto.safeParse(body);
+    const { data, error } = CreateDocumentDto.safeParse(body);
 
     const parsedFileName = file.originalname.split('.');
     const extension = parsedFileName[parsedFileName.length - 1].toLowerCase();
@@ -61,7 +61,7 @@ export class AttachmentsService {
       .toLowerCase();
     const dbFileName = `bldoc-${cleanFileName}-${Date.now()}.${extension}`;
 
-    const allowedExtensions = Object.values(ATTACHMENT_EXTENSIONS).map((ext) =>
+    const allowedExtensions = Object.values(DOCUMENT_EXTENSIONS).map((ext) =>
       ext.toLowerCase(),
     );
 
@@ -97,7 +97,7 @@ export class AttachmentsService {
         );
 
         throw new UnauthorizedException(
-          "Almost there! To add an attachment, please verify your email address. We've just sent you a verification email - be sure to check your inbox and spam folder. Thanks for helping us keep your account secure!",
+          "Almost there! To add a document, please verify your email address. We've just sent you a verification email - be sure to check your inbox and spam folder. Thanks for helping us keep your account secure!",
         );
       };
 
@@ -110,7 +110,7 @@ export class AttachmentsService {
 
         if (sentMinutesAgo < 10) {
           throw new UnauthorizedException(
-            `Heads up! You'll need to verify your email before adding an attachment. We sent you a verification email ${sentMinutesAgo} minute${sentMinutesAgo === 1 ? '' : 's'} ago-please check your inbox and spam folder. Thanks for your patience!`,
+            `Heads up! You'll need to verify your email before adding an document. We sent you a verification email ${sentMinutesAgo} minute${sentMinutesAgo === 1 ? '' : 's'} ago-please check your inbox and spam folder. Thanks for your patience!`,
           );
         } else {
           await sendVerificationEmail();
@@ -138,27 +138,27 @@ export class AttachmentsService {
           type: data.type,
           tags: data.tags,
           userId,
-        } as InferInsertModel<typeof attachmentsTable>;
+        } as InferInsertModel<typeof documentsTable>;
 
-        const newDbAttachment = await this.db
-          .insert(attachmentsTable)
+        const newDbDocument = await this.db
+          .insert(documentsTable)
           .values(insertData)
           .returning();
 
-        const signedAttachmentToken = await this.jwtService.signAsync({
+        const signedDocumentToken = await this.jwtService.signAsync({
           userId: userId,
-          attachmentId: newDbAttachment[0].id,
+          documentId: newDbDocument[0].id,
         });
 
-        await this.emailsService.sendPendingAttachmentVerificationEmail(
+        await this.emailsService.sendPendingDocumentVerificationEmail(
           userId,
           fileUrl,
           file.originalname,
-          signedAttachmentToken,
-          newDbAttachment[0].id,
+          signedDocumentToken,
+          newDbDocument[0].id,
         );
 
-        return newDbAttachment;
+        return newDbDocument;
       } catch (err) {
         throw new BadRequestException(
           `Failed to upload file to S3: ${err.message}`,
@@ -168,98 +168,94 @@ export class AttachmentsService {
   }
 
   async findAll() {
-    return await this.db.select().from(attachmentsTable);
+    return await this.db.select().from(documentsTable);
   }
 
   async findOne(id: number) {
     return await this.db
       .select()
-      .from(attachmentsTable)
-      .where(eq(attachmentsTable.id, id));
+      .from(documentsTable)
+      .where(eq(documentsTable.id, id));
   }
 
   async update(
     id: number,
-    updateAttachmentDto: z.infer<typeof UpdateAttachmentDto>,
+    updateDocumentDto: z.infer<typeof UpdateDocumentDto>,
     userId: number,
   ) {
     const dbUser = await this.db
       .select()
-      .from(attachmentsTable)
-      .where(eq(attachmentsTable.userId, userId));
+      .from(documentsTable)
+      .where(eq(documentsTable.userId, userId));
 
     if (!dbUser) throw new UnauthorizedException('Invalid user');
 
-    const dbAttachment = await this.db
+    const dbDocument = await this.db
       .select()
-      .from(attachmentsTable)
-      .where(eq(attachmentsTable.id, id));
+      .from(documentsTable)
+      .where(eq(documentsTable.id, id));
 
-    if (!dbAttachment.length)
-      throw new NotFoundException('Attachment not found');
-    if (dbAttachment[0].userId !== userId)
-      throw new UnauthorizedException('You can only edit your attachments');
+    if (!dbDocument.length) throw new NotFoundException('Document not found');
+    if (dbDocument[0].userId !== userId)
+      throw new UnauthorizedException('You can only edit your documents');
 
     return await this.db
-      .update(attachmentsTable)
-      .set(updateAttachmentDto as InferInsertModel<typeof attachmentsTable>)
-      .where(eq(attachmentsTable.id, id))
+      .update(documentsTable)
+      .set(updateDocumentDto as InferInsertModel<typeof documentsTable>)
+      .where(eq(documentsTable.id, id))
       .returning();
   }
 
   async remove(id: number, userId: number) {
     const dbUser = await this.db
       .select()
-      .from(attachmentsTable)
-      .where(eq(attachmentsTable.userId, userId));
+      .from(documentsTable)
+      .where(eq(documentsTable.userId, userId));
 
     if (!dbUser) throw new UnauthorizedException('Invalid user');
 
-    const dbAttachment = await this.db
+    const dbDocument = await this.db
       .select()
-      .from(attachmentsTable)
-      .where(eq(attachmentsTable.id, id));
+      .from(documentsTable)
+      .where(eq(documentsTable.id, id));
 
-    if (!dbAttachment.length)
-      throw new NotFoundException('Attachment not found');
-    if (dbAttachment[0].userId !== userId)
-      throw new UnauthorizedException(
-        'You can only delete your own attachments',
-      );
+    if (!dbDocument.length) throw new NotFoundException('Document not found');
+    if (documentsTable[0].userId !== userId)
+      throw new UnauthorizedException('You can only delete your own documents');
 
     return await this.db
-      .delete(attachmentsTable)
-      .where(eq(attachmentsTable.id, id));
+      .delete(documentsTable)
+      .where(eq(documentsTable.id, id));
   }
 
   async approveOrDeny(id: number, token: string, approve: boolean) {
-    const dbAttachment = await this.db
+    const dbDocument = await this.db
       .select()
-      .from(attachmentsTable)
-      .where(eq(attachmentsTable.id, id));
+      .from(documentsTable)
+      .where(eq(documentsTable.id, id));
 
-    if (!dbAttachment.length) {
-      throw new NotFoundException('Attachment not found');
+    if (!dbDocument.length) {
+      throw new NotFoundException('Document not found');
     }
 
     const tokenContent = this.jwtService.decode(token) as {
-      attachmentId: string;
+      documentId: string;
       userId: string;
     };
 
-    if (!tokenContent.userId || !tokenContent.attachmentId) {
+    if (!tokenContent.userId || !tokenContent.documentId) {
       throw new BadRequestException(
         'An invalid token was passed to the request',
       );
     }
 
     const updateData = { isApproved: approve } as Partial<
-      InferInsertModel<typeof attachmentsTable>
+      InferInsertModel<typeof documentsTable>
     >;
 
     return await this.db
-      .update(attachmentsTable)
+      .update(documentsTable)
       .set(updateData)
-      .where(eq(attachmentsTable.id, id));
+      .where(eq(documentsTable.id, id));
   }
 }

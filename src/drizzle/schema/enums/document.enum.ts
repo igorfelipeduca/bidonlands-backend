@@ -1,9 +1,9 @@
-export enum ATTACHMENT_TYPE_CHOICES {
+export enum DOCUMENT_TYPE_CHOICES {
   ADVERT_DOCUMENT = '1',
   USER_PERSONAL_INFO_DOCUMENT = '2',
 }
 
-export enum ATTACHMENT_EXTENSIONS {
+export enum DOCUMENT_EXTENSIONS {
   PNG = 'png',
   JPEG = 'jpeg',
   JPG = 'jpg',

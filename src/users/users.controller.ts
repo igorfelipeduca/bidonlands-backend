@@ -25,23 +25,25 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() data: z.infer<typeof CreateUserDto>) {
+  async create(@Body() data: z.infer<typeof CreateUserDto>) {
     return this.usersService.create(data);
   }
 
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  async findAll() {
+    return await this.usersService.findAll();
   }
 
-  @Get()
-  findOne(@Query('q') q: string) {
-    const query = /^\d+$/.test(q) ? +q : q;
-    return this.usersService.findOne(query);
+  @Get('/find')
+  async findOne(
+    @Request() req,
+    @Query('documents') documents: string,
+  ) {
+    return await this.usersService.findOne(req.url, documents);
   }
 
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() data: z.infer<typeof UpdateUserDto>,
     @Request() req: AuthenticatedRequest,
@@ -52,7 +54,7 @@ export class UsersController {
   @Roles(Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+  async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.usersService.remove(+id, req.user.id);
   }
 }

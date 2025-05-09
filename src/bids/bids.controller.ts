@@ -15,13 +15,14 @@ import { UpdateBidDto } from './dto/update-bid.dto';
 import z from 'zod';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { AuthenticatedRequest } from 'src/guards/roles.guard';
+import { DocumentsGuard } from 'src/guards/documents.guard';
 
 @Controller('bids')
 export class BidsController {
   constructor(private readonly bidsService: BidsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, DocumentsGuard)
   create(
     @Body() createBidDto: z.infer<typeof CreateBidDto>,
     @Request() req: AuthenticatedRequest,

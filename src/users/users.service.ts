@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -10,12 +11,16 @@ import { z } from 'zod';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { schema } from '../drizzle/schema';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
-import { usersTable } from '../drizzle/schema/users.schema';
-import { eq } from 'drizzle-orm';
+import { usersTable, UserType } from '../drizzle/schema/users.schema';
+import { eq, InferInsertModel } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { EmailService } from 'src/email/email.service';
 import Stripe from 'stripe';
 import { bidsTable } from 'src/drizzle/schema/bids.schema';
+import {
+  documentsTable,
+  DocumentType,
+} from 'src/drizzle/schema/documents.schema';
 
 @Injectable()
 export class UsersService {
@@ -70,23 +75,58 @@ export class UsersService {
   }
 
   async findAll() {
-    return await this.db
-      .select()
-      .from(schema.usersTable)
-      .leftJoin(bidsTable, eq(bidsTable.advertId, usersTable.id));
+    const res = await this.db.select().from(usersTable);
+
+    return res;
   }
 
-  async findOne(query: number | string) {
-    let whereClause: ReturnType<typeof eq>;
+  async findOne(url: string, documents: string) {
+    let user: (UserType & { documents?: DocumentType[] }) | null = null;
 
-    if (typeof query === 'number') {
-      whereClause = eq(usersTable.id, query);
+    let query = url.split('q=')[1] || '';
+    query = query.split('&')[0].trim();
+
+    if (query.includes('@')) {
+      const users = await this.db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, query));
+      user = users[0] || null;
     } else {
-      whereClause = eq(usersTable.email, query);
+      const users = await this.db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, +query));
+      user = users[0] || null;
     }
 
-    const result = await this.db.select().from(usersTable).where(whereClause);
-    return result[0];
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (documents === 'true') {
+      const userDocuments = await this.db
+        .select()
+        .from(documentsTable)
+        .where(eq(documentsTable.userId, user.id));
+      user.documents = userDocuments;
+    }
+
+    return user;
+  }
+
+  async findUserWithDocuments(userId: string) {
+    const userAndDocuments = await this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, +userId))
+      .leftJoin(documentsTable, eq(usersTable.id, documentsTable.userId));
+
+    if (!userAndDocuments.length) {
+      throw new NotFoundException('User not found');
+    }
+
+    return userAndDocuments;
   }
 
   async update(

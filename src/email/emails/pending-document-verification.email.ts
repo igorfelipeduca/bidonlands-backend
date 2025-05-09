@@ -1,4 +1,4 @@
-export const PendingAttachmentVerificationEmail = ({
+export const PendingDocumentVerificationEmail = ({
   userName,
   userEmail,
   documentName,

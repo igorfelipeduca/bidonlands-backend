@@ -15,7 +15,7 @@ export const bidsTable = pgTable('bids', {
       onDelete: 'cascade',
     }),
   amount: integer().notNull(),
-  active: boolean().default(false),
+  active: boolean().default(true),
   createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updatedAt', { mode: 'date' })
     .notNull()

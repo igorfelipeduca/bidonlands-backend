@@ -5,11 +5,11 @@ import {
   timestamp,
   boolean,
 } from 'drizzle-orm/pg-core';
-import { ATTACHMENT_TYPE_CHOICES } from './enums/attachment.enum';
+import { DOCUMENT_TYPE_CHOICES } from './enums/document.enum';
 import { advertsTable } from './adverts.schema';
 import { usersTable } from './users.schema';
 
-export const attachmentsTable = pgTable('attachments', {
+export const documentsTable = pgTable('documents', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: varchar({ length: 150 }).notNull().default(''),
   extension: varchar({ length: 50 }).notNull().default(''),
@@ -18,7 +18,7 @@ export const attachmentsTable = pgTable('attachments', {
   key: varchar({ length: 150 }).notNull().default(''),
   type: varchar({ length: 1, enum: ['1', '2'] })
     .notNull()
-    .default(ATTACHMENT_TYPE_CHOICES.USER_PERSONAL_INFO_DOCUMENT),
+    .default(DOCUMENT_TYPE_CHOICES.USER_PERSONAL_INFO_DOCUMENT),
   tags: varchar().notNull().default(''),
   userId: integer('userId')
     .notNull()
@@ -35,3 +35,5 @@ export const attachmentsTable = pgTable('attachments', {
   }),
   isApproved: boolean().default(null),
 });
+
+export type DocumentType = typeof documentsTable.$inferSelect;

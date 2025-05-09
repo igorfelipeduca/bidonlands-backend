@@ -1,4 +1,4 @@
-export const AttachmentEmailVerificationEmail = ({
+export const DocumentEmailVerificationEmail = ({
   name,
   email,
   verifyUrl,

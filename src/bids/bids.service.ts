@@ -18,9 +18,7 @@ import { advertsTable } from 'src/drizzle/schema/adverts.schema';
 import { bidsTable } from 'src/drizzle/schema/bids.schema';
 import { UsersService } from 'src/users/users.service';
 import { emailTokenTable } from 'src/drizzle/schema/email-tokens.schema';
-import Stripe from 'stripe';
 import { EmailService } from 'src/email/email.service';
-import { attachmentsTable } from 'src/drizzle/schema/attachments.schema';
 import { Money } from '../lib/money-value-object';
 
 @Injectable()
@@ -145,7 +143,7 @@ export class BidsService {
         );
 
         throw new UnauthorizedException(
-          "Almost there! To add an attachment, please verify your email address. We've just sent you a verification email - be sure to check your inbox and spam folder. Thanks for helping us keep your account secure!",
+          "Almost there! To add an document, please verify your email address. We've just sent you a verification email - be sure to check your inbox and spam folder. Thanks for helping us keep your account secure!",
         );
       };
 
@@ -158,7 +156,7 @@ export class BidsService {
 
         if (sentMinutesAgo < 10) {
           throw new UnauthorizedException(
-            `Heads up! You'll need to verify your email before adding an attachment. We sent you a verification email ${sentMinutesAgo} minute${sentMinutesAgo === 1 ? '' : 's'} ago-please check your inbox and spam folder. Thanks for your patience!`,
+            `Heads up! You'll need to verify your email before adding an document. We sent you a verification email ${sentMinutesAgo} minute${sentMinutesAgo === 1 ? '' : 's'} ago-please check your inbox and spam folder. Thanks for your patience!`,
           );
         } else {
           await sendVerificationEmail();

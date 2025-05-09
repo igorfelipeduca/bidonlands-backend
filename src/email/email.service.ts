@@ -8,11 +8,11 @@ import { usersTable } from 'src/drizzle/schema/users.schema';
 import { eq } from 'drizzle-orm';
 import { AuthService } from 'src/auth/auth.service';
 import { EmailConfirmationEmail } from './emails/email-confirmation.email';
-import { AttachmentEmailVerificationEmail } from './emails/attachment-email-verification.email';
+import { DocumentEmailVerificationEmail } from './emails/document-email-verification.email';
 import { SendBidIntentEmail } from './emails/send-bid-intent.email';
 import { ExistentBidEmail } from './emails/existent-bid.email';
 import { BidDepositConfirmationEmail } from './emails/bid-deposit-confirmation.email';
-import { PendingAttachmentVerificationEmail } from './emails/pending-attachment-verification.email';
+import { PendingDocumentVerificationEmail } from './emails/pending-document-verification.email';
 import { OutbidEmail } from './emails/outbid.email';
 import { Money } from '../lib/money-value-object';
 
@@ -68,7 +68,7 @@ export class EmailService {
     const sentEmail = await this.resend.emails.send({
       from: 'BidOnLands <igor@duca.dev>',
       to: [email],
-      subject: 'hello world',
+      subject: `Welcome, ${user[0].firstName}! Please verify your email address`,
       html: EmailConfirmationEmail({
         email,
         name: `${user[0].firstName} ${user[0].lastName}`,
@@ -103,8 +103,8 @@ export class EmailService {
     const sentEmail = await this.resend.emails.send({
       from: 'BidOnLands <igor@duca.dev>',
       to: [email],
-      subject: 'Verify your email to add attachments',
-      html: AttachmentEmailVerificationEmail({
+      subject: 'Verify your email to add documents',
+      html: DocumentEmailVerificationEmail({
         email,
         name: `${user[0].firstName} ${user[0].lastName}`,
         verifyUrl,
@@ -230,12 +230,12 @@ export class EmailService {
     return sentEmail;
   }
 
-  async sendPendingAttachmentVerificationEmail(
+  async sendPendingDocumentVerificationEmail(
     userId: number,
     fileUrl: string,
     fileOriginalName: string,
     signedToken: string,
-    attachmentId: number,
+    documentId: number,
   ) {
     const user = await this.db
       .select()
@@ -254,14 +254,14 @@ export class EmailService {
       // to: "admin@thelanddepot.com",
       to: [user[0].email],
       subject: `[INTERNAL COMMUNICATION] A new document was submitted`,
-      html: PendingAttachmentVerificationEmail({
+      html: PendingDocumentVerificationEmail({
         userName:
           `${user[0].firstName ?? ''} ${user[0].lastName ?? ''}`.trim() ||
           undefined,
         userEmail: user[0].email,
         documentName: 'Document',
-        approveUrl: `http://localhost:9090/attachments/${attachmentId}/approve?token=${signedToken}`,
-        denyUrl: `http://localhost:9090/attachments/${attachmentId}/deny?token=${signedToken}`,
+        approveUrl: `http://localhost:9090/documents/${documentId}/approve?token=${signedToken}`,
+        denyUrl: `http://localhost:9090/documents/${documentId}/deny?token=${signedToken}`,
       }),
       attachments: [
         {
