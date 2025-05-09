@@ -15,6 +15,7 @@ import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { EmailService } from 'src/email/email.service';
 import Stripe from 'stripe';
+import { bidsTable } from 'src/drizzle/schema/bids.schema';
 
 @Injectable()
 export class UsersService {
@@ -69,7 +70,10 @@ export class UsersService {
   }
 
   async findAll() {
-    return await this.db.select().from(schema.usersTable);
+    return await this.db
+      .select()
+      .from(schema.usersTable)
+      .leftJoin(bidsTable, eq(bidsTable.advertId, usersTable.id));
   }
 
   async findOne(query: number | string) {
@@ -80,7 +84,7 @@ export class UsersService {
     } else {
       whereClause = eq(usersTable.email, query);
     }
-    
+
     const result = await this.db.select().from(usersTable).where(whereClause);
     return result[0];
   }
