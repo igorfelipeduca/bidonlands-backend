@@ -25,6 +25,7 @@ import {
 } from 'src/drizzle/schema/enums/advert.enum';
 import { generateFakeAdvert } from './utils/generate-fake-advert';
 import { EmailService } from 'src/email/email.service';
+import { documentsTable } from 'src/drizzle/schema/documents.schema';
 
 @Injectable()
 export class AdvertsService {
@@ -73,22 +74,43 @@ export class AdvertsService {
   }
 
   async findAll(page_size: number = 20, status?: string, search?: string) {
-    return await this.db
-      .select()
+    // 1. Fetch adverts and their documents with a left join
+    const advertsWithDocuments = await this.db
+      .select({
+        advert: advertsTable,
+        document: documentsTable,
+      })
       .from(advertsTable)
+      .leftJoin(documentsTable, eq(advertsTable.id, documentsTable.advertId))
       .orderBy(advertsTable.id)
       .limit(page_size)
       .where(
         and(
           status ? eq(advertsTable.status, STATUS_CHOICES[status]) : undefined,
           search
-          ? like(
-              sql`LOWER(${advertsTable.title})`,
-              `%${search.toLowerCase()}%`
-            )
-          : undefined,
+            ? like(
+                sql`LOWER(${advertsTable.title})`,
+                `%${search.toLowerCase()}%`,
+              )
+            : undefined,
         ),
       );
+
+    // 2. Group documents under their respective adverts
+    const advertMap = new Map<number, any>();
+
+    for (const row of advertsWithDocuments) {
+      const advertId = row.advert.id;
+      if (!advertMap.has(advertId)) {
+        advertMap.set(advertId, { ...row.advert, documents: [] });
+      }
+      if (row.document) {
+        advertMap.get(advertId).documents.push(row.document);
+      }
+    }
+
+    // 3. Return as an array
+    return Array.from(advertMap.values());
   }
 
   async findOne(id: number) {

@@ -84,6 +84,12 @@ export class DocumentsService {
       throw new BadRequestException('Advert id is required');
     }
 
+    if (data.type === '2' && data.advertId) {
+      throw new BadRequestException(
+        'You can not link personal documents to adverts.',
+      );
+    }
+
     if (!dbUser[0] || !dbUser[0].emailVerified) {
       const availableEmail = await this.db
         .select()
@@ -137,6 +143,8 @@ export class DocumentsService {
           key: dbFileName,
           type: data.type,
           tags: data.tags,
+          advertId: +data.advertId,
+          isApproved: data.type === '2' ? true : false,
           userId,
         } as InferInsertModel<typeof documentsTable>;
 
@@ -150,13 +158,15 @@ export class DocumentsService {
           documentId: newDbDocument[0].id,
         });
 
-        await this.emailsService.sendPendingDocumentVerificationEmail(
-          userId,
-          fileUrl,
-          file.originalname,
-          signedDocumentToken,
-          newDbDocument[0].id,
-        );
+        if (data.type === '1') {
+          await this.emailsService.sendPendingDocumentVerificationEmail(
+            userId,
+            fileUrl,
+            file.originalname,
+            signedDocumentToken,
+            newDbDocument[0].id,
+          );
+        }
 
         return newDbDocument;
       } catch (err) {

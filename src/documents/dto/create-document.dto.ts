@@ -7,5 +7,5 @@ export const CreateDocumentDto = z.object({
     error: 'Invalid document type',
   }),
   tags: z.string({ error: 'Document tags must be a string' }),
-  advertId: z.number({ error: 'Advert id must be a number' }).optional(),
+  advertId: z.string({ error: 'Advert id must be a string' }).optional(),
 });
