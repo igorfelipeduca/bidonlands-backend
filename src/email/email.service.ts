@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import { schema } from '../drizzle/schema';
 import { emailTokenTable } from 'src/drizzle/schema/email-tokens.schema';
-import { usersTable } from 'src/drizzle/schema/users.schema';
+import { usersTable, UserType } from 'src/drizzle/schema/users.schema';
 import { eq } from 'drizzle-orm';
 import { AuthService } from 'src/auth/auth.service';
 import { EmailConfirmationEmail } from './emails/email-confirmation.email';
@@ -15,6 +15,8 @@ import { BidDepositConfirmationEmail } from './emails/bid-deposit-confirmation.e
 import { PendingDocumentVerificationEmail } from './emails/pending-document-verification.email';
 import { OutbidEmail } from './emails/outbid.email';
 import { Money } from '../lib/money-value-object';
+import { AdvertType } from 'src/drizzle/schema/adverts.schema';
+import { AdvertWinnerEmail } from './emails/advert-winner.email';
 
 @Injectable()
 export class EmailService {
@@ -271,8 +273,6 @@ export class EmailService {
       ],
     });
 
-    console.log({ sentEmail });
-
     return sentEmail;
   }
 
@@ -311,6 +311,27 @@ export class EmailService {
         },
         formattedAmount,
         websiteUrl,
+      }),
+    });
+
+    return sentEmail;
+  }
+
+  async sendBidWinnerEmail(
+    user: UserType,
+    formattedAmount: string,
+    advert: AdvertType,
+  ) {
+    console.log({ user, formattedAmount, advert });
+
+    const sentEmail = await this.resend.emails.send({
+      from: 'BidOnLands <igor@duca.dev>',
+      to: [user.email],
+      subject: `Congratulations for winning the auction ${advert.title}`,
+      html: AdvertWinnerEmail({
+        user,
+        advert,
+        formattedAmount,
       }),
     });
 

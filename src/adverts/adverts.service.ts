@@ -12,26 +12,27 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { schema } from 'src/drizzle/schema';
 import z, { prettifyError } from 'zod';
 import { usersTable } from 'src/drizzle/schema/users.schema';
-import { eq, InferInsertModel } from 'drizzle-orm';
-import { advertsTable } from 'src/drizzle/schema/adverts.schema';
+import { and, eq, InferInsertModel, like, or, sql } from 'drizzle-orm';
+import { advertsTable, AdvertType } from 'src/drizzle/schema/adverts.schema';
 import { getDepositPercentage } from './utils/get-deposit-percentage';
 import { Money } from '../lib/money-value-object';
-import { faker } from '@faker-js/faker';
 import {
   SALES_TYPE_CHOICES,
   CATEGORY_CHOICES,
   ADS_TYPE_CHOICES,
   CONDITION_CHOICES,
-  INSPECTION_CHOICES,
   STATUS_CHOICES,
 } from 'src/drizzle/schema/enums/advert.enum';
 import { generateFakeAdvert } from './utils/generate-fake-advert';
+import { EmailService } from 'src/email/email.service';
 
 @Injectable()
 export class AdvertsService {
   constructor(
     @Inject(DrizzleAsyncProvider)
     private db: NodePgDatabase<typeof schema>,
+    @Inject(EmailService)
+    private emailService: EmailService,
   ) {}
 
   async create(body: z.infer<typeof CreateAdvertDto>, userId: number) {
@@ -71,12 +72,23 @@ export class AdvertsService {
     return newAdvert;
   }
 
-  async findAll(page_size: number = 20) {
+  async findAll(page_size: number = 20, status?: string, search?: string) {
     return await this.db
       .select()
       .from(advertsTable)
       .orderBy(advertsTable.id)
-      .limit(page_size);
+      .limit(page_size)
+      .where(
+        and(
+          status ? eq(advertsTable.status, STATUS_CHOICES[status]) : undefined,
+          search
+          ? like(
+              sql`LOWER(${advertsTable.title})`,
+              `%${search.toLowerCase()}%`
+            )
+          : undefined,
+        ),
+      );
   }
 
   async findOne(id: number) {
@@ -164,7 +176,7 @@ export class AdvertsService {
       throw new BadRequestException('No user found for this auth token');
     }
 
-    const allowedList = process.env.ADMIN_EMAILS.split(",");
+    const allowedList = process.env.ADMIN_EMAILS.split(',');
 
     if (!allowedList.includes(dbUser[0].email)) {
       throw new UnauthorizedException("You can't perform this action");
@@ -178,10 +190,10 @@ export class AdvertsService {
         adsTypeChoices: ADS_TYPE_CHOICES,
         conditionChoices: CONDITION_CHOICES,
         statusChoices: STATUS_CHOICES,
-      })
+      }),
     );
 
-    let inserted;
+    let inserted: AdvertType[] | null = null;
     try {
       inserted = await this.db.insert(advertsTable).values(adverts).returning();
     } catch (error) {
@@ -193,5 +205,63 @@ export class AdvertsService {
       throw error;
     }
     return inserted;
+  }
+
+  async endAdvert(advertId: number) {
+    const dbAdvert = await this.db
+      .select()
+      .from(advertsTable)
+      .where(eq(advertsTable.id, advertId));
+
+    if (!dbAdvert) {
+      throw new NotFoundException('Advert not found');
+    }
+
+    const updateData: Partial<AdvertType> = {
+      endsAt: new Date(),
+      status: STATUS_CHOICES.SOLD,
+    };
+
+    return await this.db
+      .update(advertsTable)
+      .set(updateData)
+      .where(eq(advertsTable.id, advertId));
+  }
+
+  async announceWinner(advertId: number, userId: number, bidAmount: number) {
+    const dbAdvert = await this.db
+      .select()
+      .from(advertsTable)
+      .where(eq(advertsTable.id, advertId));
+
+    const dbUser = await this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    if (!dbAdvert.length) {
+      throw new NotFoundException('Advert not found');
+    }
+
+    if (!dbUser.length) {
+      throw new NotFoundException('User not found');
+    }
+
+    const advertUpdate: Partial<AdvertType> = { status: STATUS_CHOICES.SOLD };
+
+    await this.db
+      .update(advertsTable)
+      .set(advertUpdate)
+      .where(eq(advertsTable.id, advertId));
+
+    const moneyBidAmount = new Money(bidAmount, 'USD', {
+      isCents: true,
+    });
+
+    await this.emailService.sendBidWinnerEmail(
+      dbUser[0],
+      moneyBidAmount.format(),
+      dbAdvert[0],
+    );
   }
 }

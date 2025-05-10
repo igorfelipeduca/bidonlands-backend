@@ -96,3 +96,5 @@ export const advertsTable = pgTable('adverts', {
   slug: varchar({ length: 255 }).unique(),
   minBidAmount: integer().notNull(),
 });
+
+export type AdvertType = typeof advertsTable.$inferSelect;

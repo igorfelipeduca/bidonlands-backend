@@ -12,6 +12,8 @@ import { DocumentsModule } from './documents/documents.module';
 import { BidsModule } from './bids/bids.module';
 import { WebhookModule } from './webhook/webhook.module';
 import { GatewaysModule } from './gateways/gateways.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AdvertTasksModule } from './advert-tasks/advert-tasks.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { GatewaysModule } from './gateways/gateways.module';
     BidsModule,
     WebhookModule,
     GatewaysModule,
+    ScheduleModule.forRoot(),
+    AdvertTasksModule
   ],
   controllers: [AppController],
   providers: [AppService],

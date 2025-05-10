@@ -39,21 +39,17 @@ export class DocumentsGuard implements CanActivate {
       user.id,
     );
 
-    if (!dbUserAndDocuments || !dbUserAndDocuments.length) {
+    if (!dbUserAndDocuments) {
       throw new UnauthorizedException('User not found in database');
     }
 
-    const documents = dbUserAndDocuments
-      .filter((row) => row.documents)
-      .map((row) => row.documents as DocumentType);
-
-    if (!documents || !documents.length) {
+    if (!dbUserAndDocuments.documents || !dbUserAndDocuments.documents.length) {
       throw new UnauthorizedException(
         'To perform this action, please submit a Photo ID and wait until it is approved by our staff.',
       );
     }
 
-    const hasApprovedPhotoId = documents.some(
+    const hasApprovedPhotoId = dbUserAndDocuments.documents.some(
       (d) => d.type === '2' && d.isApproved === true,
     );
 

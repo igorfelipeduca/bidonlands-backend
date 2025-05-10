@@ -15,11 +15,13 @@ import { schema } from 'src/drizzle/schema';
 import { usersTable } from 'src/drizzle/schema/users.schema';
 import { and, eq, InferInsertModel } from 'drizzle-orm';
 import { advertsTable } from 'src/drizzle/schema/adverts.schema';
-import { bidsTable } from 'src/drizzle/schema/bids.schema';
+import { bidsTable, BidType } from 'src/drizzle/schema/bids.schema';
 import { UsersService } from 'src/users/users.service';
 import { emailTokenTable } from 'src/drizzle/schema/email-tokens.schema';
 import { EmailService } from 'src/email/email.service';
 import { Money } from '../lib/money-value-object';
+import { getHighestBid } from 'src/lib/get-highest-bid';
+import { STATUS_CHOICES } from 'src/drizzle/schema/enums/advert.enum';
 
 @Injectable()
 export class BidsService {
@@ -64,8 +66,12 @@ export class BidsService {
     }).getInCents();
 
     if (dbUser[0].emailVerified) {
+      // Fetch advert and bids as nested objects
       const dbAdvert = await this.db
-        .select()
+        .select({
+          advert: advertsTable,
+          bid: bidsTable,
+        })
         .from(advertsTable)
         .where(eq(advertsTable.id, data.advertId))
         .leftJoin(bidsTable, eq(bidsTable.advertId, advertsTable.id));
@@ -74,10 +80,15 @@ export class BidsService {
         throw new NotFoundException('Advertisement not found');
       }
 
-      const advert = dbAdvert[0].adverts;
+      // Group all bids under the advert
+      const { advert } = dbAdvert[0];
+      const bids = dbAdvert.filter((row) => row.bid).map((row) => row.bid);
 
       const isAdvertExpired =
         advert?.endsAt && new Date(advert.endsAt).getTime() < Date.now();
+
+      const isAdvertNotStarted =
+        advert?.startsAt && new Date(advert.startsAt).getTime() > Date.now();
 
       if (isAdvertExpired) {
         throw new UnauthorizedException(
@@ -85,17 +96,19 @@ export class BidsService {
         );
       }
 
-      const bids = dbAdvert.filter((row) => row.bids).map((row) => row.bids);
-      const highestBid = bids.length
-        ? bids.reduce((maxBid, bid) => {
-            const bidAmount = new Money(bid.amount, 'USD', { isCents: true });
-            return !maxBid ||
-              bidAmount.getInCents() >
-                new Money(maxBid.amount, 'USD', { isCents: true }).getInCents()
-              ? bid
-              : maxBid;
-          }, null)
-        : null;
+      if (advert.status !== STATUS_CHOICES.ACTIVE) {
+        throw new UnauthorizedException(
+          'Cannot place a bid on an inactive advertisement.',
+        );
+      }
+
+      if (isAdvertNotStarted) {
+        throw new UnauthorizedException(
+          'Cannot place a bid on an advertisement that has not started yet.',
+        );
+      }
+
+      const highestBid = getHighestBid(bids);
 
       data.amount = dataAmountInCents;
 
@@ -120,14 +133,42 @@ export class BidsService {
         });
       }
 
-      const newBid = await this.db
-        .insert(bidsTable)
-        .values({
-          advertId: data.advertId,
-          amount: dataAmountInCents,
-          userId: userId,
-        })
-        .returning();
+      const insertBidData = {
+        advertId: data.advertId,
+        amount: dataAmountInCents,
+        userId: userId,
+      } as BidType;
+
+      const existentBid = await this.db
+        .select()
+        .from(bidsTable)
+        .where(
+          and(
+            eq(bidsTable.userId, userId),
+            eq(bidsTable.advertId, data.advertId),
+          ),
+        );
+
+      let newBid: BidType | null = null;
+
+      if (existentBid.length) {
+        await this.db
+          .update(bidsTable)
+          .set(insertBidData)
+          .where(eq(bidsTable.id, existentBid[0].id));
+
+        const updatedBids = await this.db
+          .select()
+          .from(bidsTable)
+          .where(eq(bidsTable.id, existentBid[0].id));
+        newBid = updatedBids[0] || null;
+      } else {
+        const insertedBids = await this.db
+          .insert(bidsTable)
+          .values(insertBidData)
+          .returning();
+        newBid = insertedBids[0] || null;
+      }
 
       return newBid;
     } else {

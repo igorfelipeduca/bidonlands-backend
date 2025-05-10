@@ -34,9 +34,13 @@ export class AdvertsController {
   }
 
   @Get()
-  findAll(@Query('page_size') page_size?: string) {
+  findAll(
+    @Query('page_size') page_size?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
     const size = page_size ? parseInt(page_size, 10) : 20;
-    return this.advertsService.findAll(size);
+    return this.advertsService.findAll(size, status, search);
   }
 
   @Get(':id')
@@ -69,5 +73,12 @@ export class AdvertsController {
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.advertsService.remove(+id, req.user.id);
+  }
+
+  @Roles(Role.Admin)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Post(':id/end')
+  endAdvert(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return this.advertsService.endAdvert(+id);
   }
 }

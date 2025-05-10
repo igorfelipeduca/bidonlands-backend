@@ -117,7 +117,10 @@ export class UsersService {
 
   async findUserWithDocuments(userId: string) {
     const userAndDocuments = await this.db
-      .select()
+      .select({
+        user: usersTable,
+        document: documentsTable,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, +userId))
       .leftJoin(documentsTable, eq(usersTable.id, documentsTable.userId));
@@ -126,7 +129,15 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return userAndDocuments;
+    const { user } = userAndDocuments[0];
+    const documents = userAndDocuments
+      .filter((row) => row.document)
+      .map((row) => row.document);
+
+    return {
+      ...user,
+      documents,
+    };
   }
 
   async update(
