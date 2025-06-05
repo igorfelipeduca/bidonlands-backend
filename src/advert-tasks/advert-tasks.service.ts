@@ -62,11 +62,11 @@ export class AdvertTasksService {
         continue;
       }
 
-      await this.advertsService.announceWinner(
-        adverts.id,
-        highestBid.userId,
-        highestBid.amount,
-      );
+      // await this.advertsService.announceWinner(
+      //   adverts.id,
+      //   highestBid.userId,
+      //   highestBid.amount,
+      // );
     }
 
     const ignoredCount = advertsAndBids.filter((ab: any) => {

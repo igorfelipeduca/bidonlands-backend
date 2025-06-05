@@ -12,6 +12,7 @@ import {
   CONDITION_CHOICES,
   STATUS_CHOICES,
 } from './enums/advert.enum';
+import { sql } from 'drizzle-orm';
 
 export const advertsTable = pgTable('adverts', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -95,6 +96,10 @@ export const advertsTable = pgTable('adverts', {
   zipCode: varchar({ length: 20 }).default(''),
   slug: varchar({ length: 255 }).unique(),
   minBidAmount: integer().notNull(),
+  likedBy: integer()
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::integer[]`),
 });
 
 export type AdvertType = typeof advertsTable.$inferSelect;

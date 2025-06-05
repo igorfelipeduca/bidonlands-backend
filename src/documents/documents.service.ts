@@ -143,9 +143,9 @@ export class DocumentsService {
           key: dbFileName,
           type: data.type,
           tags: data.tags,
-          advertId: +data.advertId,
-          isApproved: data.type === '2' ? true : false,
+          isApproved: data.type === '1' ? true : false,
           userId,
+          advertId: data.type === '1' ? data.advertId : undefined,
         } as InferInsertModel<typeof documentsTable>;
 
         const newDbDocument = await this.db
@@ -158,7 +158,7 @@ export class DocumentsService {
           documentId: newDbDocument[0].id,
         });
 
-        if (data.type === '1') {
+        if (data.type === '2') {
           await this.emailsService.sendPendingDocumentVerificationEmail(
             userId,
             fileUrl,

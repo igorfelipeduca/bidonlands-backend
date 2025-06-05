@@ -26,59 +26,81 @@ export class AdvertsController {
   @Post()
   @Roles(Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  create(
+  async create(
     @Body() createAdvertDto: z.infer<typeof CreateAdvertDto>,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.advertsService.create(createAdvertDto, req.user.id);
+    return await this.advertsService.create(createAdvertDto, req.user.id);
   }
 
   @Get()
-  findAll(
+  async findAll(
     @Query('page_size') page_size?: string,
     @Query('status') status?: string,
     @Query('search') search?: string,
   ) {
     const size = page_size ? parseInt(page_size, 10) : 20;
-    return this.advertsService.findAll(size, status, search);
+    return await this.advertsService.findAll(size, status, search);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.advertsService.findOne(+id);
+  @Get('/find/:id')
+  async findOne(@Param('id') id: string) {
+    return await this.advertsService.findOne(+id);
+  }
+
+  @Get('/slug/:slug')
+  async findOneBySlug(@Param('slug') slug: string) {
+    return await this.advertsService.findOneBySlug(slug);
   }
 
   @Post('seed')
   @UseGuards(JwtAuthGuard)
-  seedAdverts(
+  async seedAdverts(
     @Request() req: AuthenticatedRequest,
     @Query('qty') quantity: string,
   ) {
-    return this.advertsService.seedAdverts(req.user.id, +quantity);
+    return await this.advertsService.seedAdverts(req.user.id, +quantity);
   }
 
   @Roles(Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateAdvertDto: z.infer<typeof UpdateAdvertDto>,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.advertsService.update(+id, updateAdvertDto, req.user.id);
+    return await this.advertsService.update(+id, updateAdvertDto, req.user.id);
   }
 
   @Roles(Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.advertsService.remove(+id, req.user.id);
+  async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    return await this.advertsService.remove(+id, req.user.id);
   }
 
   @Roles(Role.Admin)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Post(':id/end')
-  endAdvert(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.advertsService.endAdvert(+id);
+  async endAdvert(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return await this.advertsService.endAdvert(+id);
+  }
+
+  @Get('featured')
+  async getFeaturedAdvert() {
+    return await this.advertsService.getFeaturedAdvert();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/like')
+  async likeAdvert(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return await this.advertsService.likeAdvert(+id, req.user.id);
   }
 }

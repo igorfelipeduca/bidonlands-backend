@@ -26,6 +26,8 @@ import {
 import { generateFakeAdvert } from './utils/generate-fake-advert';
 import { EmailService } from 'src/email/email.service';
 import { documentsTable } from 'src/drizzle/schema/documents.schema';
+import { bidsTable, BidType } from 'src/drizzle/schema/bids.schema';
+import slugify from 'slugify';
 
 @Injectable()
 export class AdvertsService {
@@ -63,6 +65,7 @@ export class AdvertsService {
       ...data,
       amount: amount.getInCents(),
       depositPercentage: getDepositPercentage(data.state),
+      slug: slugify(data.title),
     } as InferInsertModel<typeof advertsTable>;
 
     const newAdvert = await this.db
@@ -118,6 +121,39 @@ export class AdvertsService {
       .select()
       .from(advertsTable)
       .where(eq(advertsTable.id, id));
+  }
+
+  async findOneBySlug(slug: string) {
+    // Get advert with bids
+    const advertWithBids = await this.db
+      .select({ advert: advertsTable, bid: bidsTable })
+      .from(advertsTable)
+      .where(eq(advertsTable.slug, slug))
+      .leftJoin(bidsTable, eq(advertsTable.id, bidsTable.advertId));
+
+    // Get advert with documents
+    const advertWithDocs = await this.db
+      .select({ advert: advertsTable, document: documentsTable })
+      .from(advertsTable)
+      .where(eq(advertsTable.slug, slug))
+      .leftJoin(documentsTable, eq(advertsTable.id, documentsTable.advertId));
+
+    if (!advertWithBids.length) {
+      return null;
+    }
+
+    // Combine into single response
+    const advert = advertWithBids[0].advert;
+    const bids = advertWithBids.filter((row) => row.bid).map((row) => row.bid);
+    const documents = advertWithDocs
+      .filter((row) => row.document)
+      .map((row) => row.document);
+
+    return {
+      ...advert,
+      bids,
+      documents,
+    };
   }
 
   async update(
@@ -285,5 +321,104 @@ export class AdvertsService {
       moneyBidAmount.format(),
       dbAdvert[0],
     );
+  }
+
+  async getFeaturedAdvert() {
+    // 1. Busca de bids com CAST explícito para string
+    const advertsWithBids = await this.db
+      .select({ advert: advertsTable, bid: bidsTable })
+      .from(advertsTable)
+      .where(eq(advertsTable.status, STATUS_CHOICES.ACTIVE))
+      .leftJoin(
+        bidsTable,
+        sql`CAST(${bidsTable.advertId} AS TEXT) = CAST(${advertsTable.id} AS TEXT)`,
+      );
+
+    // 2. Busca de documentos
+    const advertsWithDocuments = await this.db
+      .select({ advert: advertsTable, document: documentsTable })
+      .from(advertsTable)
+      .where(eq(advertsTable.status, STATUS_CHOICES.ACTIVE))
+      .leftJoin(
+        documentsTable,
+        sql`CAST(${documentsTable.advertId} AS TEXT) = CAST(${advertsTable.id} AS TEXT)`,
+      );
+
+    // 3. Agrupamento com verificação de tipos
+    const advertsMap = new Map<
+      string,
+      AdvertType & {
+        bids: BidType[];
+        documents: (typeof documentsTable.$inferSelect)[];
+      }
+    >();
+
+    // Processamento de bids
+    for (const { advert, bid } of advertsWithBids) {
+      const advertId = advert.id.toString();
+      if (!advertsMap.has(advertId)) {
+        advertsMap.set(advertId, {
+          ...advert,
+          bids: [],
+          documents: [],
+        });
+      }
+      const existingAdvert = advertsMap.get(advertId)!;
+      if (
+        bid &&
+        !existingAdvert.bids.some((b) => b.id.toString() === bid.id.toString())
+      ) {
+        existingAdvert.bids.push(bid);
+      }
+    }
+
+    // Processamento de documentos
+    for (const { advert, document } of advertsWithDocuments) {
+      const advertId = advert.id.toString();
+      if (advertsMap.has(advertId) && document) {
+        const existingAdvert = advertsMap.get(advertId)!;
+        if (
+          !existingAdvert.documents.some(
+            (d) => d.id.toString() === document.id.toString(),
+          )
+        ) {
+          existingAdvert.documents.push(document);
+        }
+      }
+    }
+
+    const advertsWithBidsAndDocuments = Array.from(advertsMap.values());
+
+    // 4. Filtragem e seleção corrigidas
+    const validAdverts = advertsWithBidsAndDocuments.filter(
+      (ad) => ad.bids.length > 0,
+    );
+
+    if (validAdverts.length === 0) return null;
+
+    const maxBids = Math.max(...validAdverts.map((ad) => ad.bids.length));
+    const topAdverts = validAdverts.filter((ad) => ad.bids.length === maxBids);
+
+    return topAdverts[Math.floor(Math.random() * topAdverts.length)] ?? null;
+  }
+
+  async likeAdvert(advertId: number, userId: number) {
+    const dbAdvert = await this.db
+      .select()
+      .from(advertsTable)
+      .where(eq(advertsTable.id, advertId));
+
+    if (!dbAdvert.length) {
+      throw new Error('Advert not found');
+    }
+
+    const insertData = {
+      likedBy: [...dbAdvert[0].likedBy, userId],
+    } as Partial<InferInsertModel<typeof advertsTable>>;
+
+    return await this.db
+      .update(advertsTable)
+      .set(insertData)
+      .where(eq(advertsTable.id, advertId));
   }
 }
