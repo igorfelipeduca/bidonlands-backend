@@ -1,57 +1,57 @@
-export enum SALES_TYPE_CHOICES {
-  AUCTION_ONLINE = '1',
-  AUCTION_LIVE = '2',
-  AUCTION_SILENT = '3',
-  FIXED_PRICE = '4',
-  NEGOTIATED_SALE = '5',
-  BUY_NOW = '6',
-  PRIVATE_TREATY = '7',
-  SEALED_BID = '8',
-  DUTCH_AUCTION = '9',
-  REVERSE_AUCTION = '10',
-}
+export const SALES_TYPE_CHOICES = {
+  AUCTION_ONLINE: '1',
+  AUCTION_LIVE: '2',
+  AUCTION_SILENT: '3',
+  FIXED_PRICE: '4',
+  NEGOTIATED_SALE: '5',
+  BUY_NOW: '6',
+  PRIVATE_TREATY: '7',
+  SEALED_BID: '8',
+  DUTCH_AUCTION: '9',
+  REVERSE_AUCTION: '10',
+} as const;
 
-export enum CATEGORY_CHOICES {
-  ANTIQUES = '1',
-  REAL_ESTATE = '2',
-}
+export const CATEGORY_CHOICES = {
+  ANTIQUES: '1',
+  REAL_ESTATE: '2',
+} as const;
 
-export enum ADS_TYPE_CHOICES {
-  SUBJECT_TO_SELLER_CONFIRMATION = '1',
-  BUY_NOW = '2',
-  MAKE_OFFER = '3',
-  CLASSIFIED_AD = '4',
-  SPONSORED_LISTING = '5',
-  FEATURED_LISTING = '6',
-  AUCTION_AD = '7',
-}
+export const ADS_TYPE_CHOICES = {
+  SUBJECT_TO_SELLER_CONFIRMATION: '1',
+  BUY_NOW: '2',
+  MAKE_OFFER: '3',
+  CLASSIFIED_AD: '4',
+  SPONSORED_LISTING: '5',
+  FEATURED_LISTING: '6',
+  AUCTION_AD: '7',
+} as const;
 
-export enum CONDITION_CHOICES {
-  NEW = '1',
-  USED = '2',
-  RENOVATED = '3',
-  UNDER_CONSTRUCTION = '4',
-  OFF_PLAN = '5',
-  NEEDS_RENOVATION = '6',
-  UNFINISHED = '7',
-  MOVE_IN_READY = '8',
-  IN_GOOD_CONDITION = '9',
-  IN_POOR_CONDITION = '10',
-}
+export const CONDITION_CHOICES = {
+  NEW: '1',
+  USED: '2',
+  RENOVATED: '3',
+  UNDER_CONSTRUCTION: '4',
+  OFF_PLAN: '5',
+  NEEDS_RENOVATION: '6',
+  UNFINISHED: '7',
+  MOVE_IN_READY: '8',
+  IN_GOOD_CONDITION: '9',
+  IN_POOR_CONDITION: '10',
+} as const;
 
-export enum INSPECTION_CHOICES {
-  ON_SITE_INSPECTION = '1',
-  VIRTUAL_TOUR = '2',
-  VIDEO_INSPECTION = '3',
-  PHOTO_GALLERY = '4',
-}
+export const INSPECTION_CHOICES = {
+  ON_SITE_INSPECTION: '1',
+  VIRTUAL_TOUR: '2',
+  VIDEO_INSPECTION: '3',
+  PHOTO_GALLERY: '4',
+} as const;
 
-export enum STATUS_CHOICES {
-  ACTIVE = '1',
-  INACTIVE = '2',
-  PENDING = '3',
-  SOLD = '4',
-  EXPIRED = '5',
-  CANCELLED = '6',
-  ARCHIVED = '7',
-}
+export const STATUS_CHOICES = {
+  ACTIVE: '1',
+  INACTIVE: '2',
+  PENDING: '3',
+  SOLD: '4',
+  EXPIRED: '5',
+  CANCELLED: '6',
+  ARCHIVED: '7',
+} as const;

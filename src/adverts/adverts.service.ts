@@ -61,9 +61,15 @@ export class AdvertsService {
       throw new BadRequestException('The minimum accepted amount is $1');
     }
 
+    const initialDeposit = new Money(body.initialDepositAmount, 'USD');
+    if (initialDeposit.getInCents() < 100) {
+      throw new BadRequestException('The minimum accepted amount is $1');
+    }
+
     const insertData = {
       ...data,
       amount: amount.getInCents(),
+      initialDepositAmount: initialDeposit.getInCents(),
       depositPercentage: getDepositPercentage(data.state),
       slug: slugify(data.title),
     } as InferInsertModel<typeof advertsTable>;

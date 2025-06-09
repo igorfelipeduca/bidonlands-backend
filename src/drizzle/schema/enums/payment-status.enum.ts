@@ -1,0 +1,7 @@
+export const PAYMENT_STATUS = {
+  PENDING: 1,
+  APPROVED: 2,
+  CREDIT_CARD_DENIED: 3,
+  CANCELLED: 4,
+  EXPIRED: 5,
+} as const;

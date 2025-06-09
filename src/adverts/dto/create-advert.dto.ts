@@ -132,4 +132,8 @@ export const CreateAdvertDto = z.object({
     .number({ error: 'Min. bid amount must be a number' })
     .min(100, { error: 'The min. bid amount must be at least 1 dollar.' })
     .optional(),
+  initialDepositAmount: z
+    .number({ error: 'Initial deposit amount must be a number' })
+    .min(100, { error: 'The min. bid amount must be at least 1 dollar.' })
+    .optional(),
 });

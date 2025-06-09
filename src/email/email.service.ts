@@ -17,6 +17,7 @@ import { OutbidEmail } from './emails/outbid.email';
 import { Money } from '../lib/money-value-object';
 import { AdvertType } from 'src/drizzle/schema/adverts.schema';
 import { AdvertWinnerEmail } from './emails/advert-winner.email';
+import { PaymentLinkCreationEmail } from './emails/payment-link-creation.email';
 
 @Injectable()
 export class EmailService {
@@ -134,9 +135,7 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Money(bid.amount, 'USD', {
-      isCents: true,
-    }).format();
+    const formattedAmount = new Money(bid.amount, 'USD').format();
     const formattedDepositAmount = new Money(bid.depositValue, 'USD', {
       isCents: true,
     }).format();
@@ -175,9 +174,7 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Money(bid.amount, 'USD', {
-      isCents: true,
-    }).format();
+    const formattedAmount = new Money(bid.amount, 'USD').format();
     const formattedDepositAmount = new Money(bid.depositValue, 'USD', {
       isCents: true,
     }).format();
@@ -210,9 +207,7 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Money(bid.amount, 'USD', {
-      isCents: true,
-    }).format();
+    const formattedAmount = new Money(bid.amount, 'USD').format();
     const formattedDepositAmount = new Money(bid.depositValue, 'USD', {
       isCents: true,
     }).format();
@@ -332,6 +327,36 @@ export class EmailService {
         user,
         advert,
         formattedAmount,
+      }),
+    });
+
+    return sentEmail;
+  }
+
+  async sendPaymentLinkCreationEmail(
+    userId: number,
+    amount: number,
+    paymentLink: string,
+  ) {
+    const user = await this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    if (!user || !user.length) {
+      throw new NotFoundException('User not found');
+    }
+
+    const formattedAmount = new Money(amount, 'USD').format();
+
+    const sentEmail = await this.resend.emails.send({
+      from: 'BidOnLands <igor@duca.dev>',
+      to: [user[0].email],
+      subject: `Complete Your Bid Deposit - ${formattedAmount}`,
+      html: PaymentLinkCreationEmail({
+        user: user[0],
+        amount: formattedAmount,
+        url: paymentLink,
       }),
     });
 

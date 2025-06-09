@@ -9,16 +9,25 @@ import { BidsModule } from 'src/bids/bids.module';
 import { BidsService } from 'src/bids/bids.service';
 import { UsersService } from 'src/users/users.service';
 import { UsersModule } from 'src/users/users.module';
+import { PaymentsModule } from 'src/payments/payments.module';
+import { PaymentsService } from 'src/payments/payments.service';
 
 @Module({
   controllers: [AdvertsController],
-  providers: [WebhookService, BidsGateway, BidsService, UsersService],
+  providers: [
+    WebhookService,
+    BidsGateway,
+    BidsService,
+    UsersService,
+    PaymentsService,
+  ],
   imports: [
     DrizzleModule,
     EmailModule,
     GatewaysModule,
     BidsModule,
     UsersModule,
+    PaymentsModule,
   ],
 })
 export class WebhookModule {}
