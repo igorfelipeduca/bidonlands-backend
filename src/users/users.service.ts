@@ -21,6 +21,7 @@ import {
   documentsTable,
   DocumentType,
 } from 'src/drizzle/schema/documents.schema';
+import { walletsTable, WalletType, walletOperationsTable, WalletOperationType } from 'src/drizzle/schema/wallets.schema';
 
 @Injectable()
 export class UsersService {
@@ -81,7 +82,9 @@ export class UsersService {
   }
 
   async findOne(url: string, documents: string) {
-    let user: (UserType & { documents?: DocumentType[] }) | null = null;
+    let user:
+      | (UserType & { documents?: DocumentType[]; wallet?: WalletType & { operations?: WalletOperationType[] } })
+      | null = null;
 
     let query = url.split('q=')[1] || '';
     query = query.split('&')[0].trim();
@@ -112,6 +115,30 @@ export class UsersService {
       user.documents = userDocuments;
     }
 
+    const walletWithOperations = await this.db
+      .select()
+      .from(walletsTable)
+      .where(eq(walletsTable.userId, user.id))
+      .leftJoin(
+        walletOperationsTable,
+        eq(walletsTable.id, walletOperationsTable.walletId),
+      );
+
+    if (walletWithOperations.length > 0) {
+      const wallet = walletWithOperations[0].wallets;
+      const operations = walletWithOperations
+        .filter(row => row.wallet_operations !== null)
+        .map(row => row.wallet_operations)
+        .reverse();
+
+      user.wallet = {
+        ...wallet,
+        operations: operations,
+      };
+    } else {
+      user.wallet = null;
+    }
+
     return user;
   }
 
@@ -134,9 +161,34 @@ export class UsersService {
       .filter((row) => row.document)
       .map((row) => row.document);
 
+    const walletWithOperations = await this.db
+      .select()
+      .from(walletsTable)
+      .where(eq(walletsTable.userId, user.id))
+      .leftJoin(
+        walletOperationsTable,
+        eq(walletsTable.id, walletOperationsTable.walletId),
+      );
+
+    let wallet: (WalletType & { operations?: WalletOperationType[] }) | null = null;
+
+    if (walletWithOperations.length > 0) {
+      const walletData = walletWithOperations[0].wallets;
+      const operations = walletWithOperations
+        .filter(row => row.wallet_operations !== null)
+        .map(row => row.wallet_operations)
+        .reverse();
+
+      wallet = {
+        ...walletData,
+        operations: operations,
+      };
+    }
+
     return {
       ...user,
       documents,
+      wallet,
     };
   }
 

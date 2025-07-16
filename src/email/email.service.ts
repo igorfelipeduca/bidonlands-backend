@@ -347,7 +347,7 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Money(amount, 'USD').format();
+    const formattedAmount = new Money(amount, 'USD', { isCents: true }).format();
 
     const sentEmail = await this.resend.emails.send({
       from: 'BidOnLands <igor@duca.dev>',

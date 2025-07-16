@@ -15,6 +15,7 @@ import { GatewaysModule } from './gateways/gateways.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AdvertTasksModule } from './advert-tasks/advert-tasks.module';
 import { PaymentsModule } from './payments/payments.module';
+import { WalletsModule } from './wallets/wallets.module';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { PaymentsModule } from './payments/payments.module';
     GatewaysModule,
     ScheduleModule.forRoot(),
     AdvertTasksModule,
-    PaymentsModule
+    PaymentsModule,
+    WalletsModule
   ],
   controllers: [AppController],
   providers: [AppService],

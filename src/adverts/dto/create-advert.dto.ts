@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   SALES_TYPE_CHOICES,
   CATEGORY_CHOICES,
-  ADS_TYPE_CHOICES,
   CONDITION_CHOICES,
   INSPECTION_CHOICES,
   STATUS_CHOICES,
@@ -135,5 +134,13 @@ export const CreateAdvertDto = z.object({
   initialDepositAmount: z
     .number({ error: 'Initial deposit amount must be a number' })
     .min(100, { error: 'The min. bid amount must be at least 1 dollar.' })
+    .optional(),
+  reservePrice: z
+    .number({ error: 'Reserve price must be a number' })
+    .min(100, { error: 'The reserve price must be at least 1 dollar.' })
+    .optional(),
+  bidsUntilReservePrice: z
+    .number({ error: 'Bids until reserve price must be a number' })
+    .min(1, { error: 'The bids until reserve price must be at least 1.' })
     .optional(),
 });

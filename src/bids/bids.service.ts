@@ -241,20 +241,38 @@ export class BidsService {
   }
 
   async findAll() {
-    return await this.db.select().from(bidsTable);
+    const results = await this.db
+      .select({
+        bid: bidsTable,
+        user: usersTable,
+      })
+      .from(bidsTable)
+      .leftJoin(usersTable, eq(bidsTable.userId, usersTable.id));
+
+    return results.map(result => ({
+      ...result.bid,
+      user: result.user,
+    }));
   }
 
   async findOne(id: number) {
     const dbBid = await this.db
-      .select()
+      .select({
+        bid: bidsTable,
+        user: usersTable,
+      })
       .from(bidsTable)
+      .leftJoin(usersTable, eq(bidsTable.userId, usersTable.id))
       .where(eq(bidsTable.id, id));
 
-    if (!dbBid) {
+    if (!dbBid.length) {
       return undefined;
     }
 
-    return dbBid;
+    return {
+      ...dbBid[0].bid,
+      user: dbBid[0].user,
+    };
   }
 
   async update(

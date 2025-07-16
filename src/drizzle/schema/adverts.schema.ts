@@ -101,6 +101,8 @@ export const advertsTable = pgTable('adverts', {
     .notNull()
     .default(sql`ARRAY[]::integer[]`),
   initialDepositAmount: integer(),
+  reservePrice: integer(),
+  bidsUntilReservePrice: integer()
 });
 
 export type AdvertType = typeof advertsTable.$inferSelect;

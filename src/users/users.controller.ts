@@ -35,13 +35,11 @@ export class UsersController {
   }
 
   @Get('/find')
-  async findOne(
-    @Request() req,
-    @Query('documents') documents: string,
-  ) {
+  async findOne(@Request() req, @Query('documents') documents: string) {
     return await this.usersService.findOne(req.url, documents);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   async update(
     @Param('id') id: string,
