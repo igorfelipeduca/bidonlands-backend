@@ -24,6 +24,7 @@ import { STATUS_CHOICES } from 'src/drizzle/schema/enums/advert.enum';
 import Stripe from 'stripe';
 import * as dotenv from 'dotenv';
 import { PaymentsService } from 'src/payments/payments.service';
+import { walletsTable } from 'src/drizzle/schema/wallets.schema';
 
 dotenv.config();
 const stripe = new Stripe(process.env.STRIPE_KEY ?? '');
@@ -112,6 +113,26 @@ export class BidsService {
       if (isAdvertNotStarted) {
         throw new UnauthorizedException(
           'Cannot place a bid on an advertisement that has not started yet.',
+        );
+      }
+
+      const userWallet = await this.db
+        .select()
+        .from(walletsTable)
+        .where(eq(walletsTable.userId, userId));
+
+      if (!userWallet.length) {
+        throw new UnauthorizedException(
+          'You need to have a wallet to place a bid.',
+        );
+      }
+
+      if (
+        advert.minimumWalletBalance &&
+        userWallet[0].balance < advert.minimumWalletBalance
+      ) {
+        throw new UnauthorizedException(
+          `You need to have a wallet with a balance of at least ${advert.minimumWalletBalance} to place a bid.`,
         );
       }
 
@@ -249,7 +270,7 @@ export class BidsService {
       .from(bidsTable)
       .leftJoin(usersTable, eq(bidsTable.userId, usersTable.id));
 
-    return results.map(result => ({
+    return results.map((result) => ({
       ...result.bid,
       user: result.user,
     }));
@@ -334,5 +355,30 @@ export class BidsService {
 
   async remove(id: number) {
     return `This action removes a #${id} bid`;
+  }
+
+  async getUserBids(userId: number) {
+    const dbUser = await this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    if (!dbUser.length) {
+      throw new NotFoundException('User not found');
+    }
+
+    const bidsWithAdverts = await this.db
+      .select({
+        bid: bidsTable,
+        advert: advertsTable,
+      })
+      .from(bidsTable)
+      .innerJoin(advertsTable, eq(bidsTable.advertId, advertsTable.id))
+      .where(eq(bidsTable.userId, userId));
+
+    return bidsWithAdverts.map((row) => ({
+      ...row.bid,
+      advert: row.advert,
+    }));
   }
 }

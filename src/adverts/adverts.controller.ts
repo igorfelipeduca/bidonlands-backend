@@ -95,6 +95,11 @@ export class AdvertsController {
     return await this.advertsService.getFeaturedAdvert();
   }
 
+  @Get('favorites/:userId')
+  async getUserFavorites(@Param('userId') userId: string) {
+    return await this.advertsService.getUserFavorites(+userId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post(':id/like')
   async likeAdvert(

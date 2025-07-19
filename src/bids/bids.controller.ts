@@ -54,4 +54,9 @@ export class BidsController {
   remove(@Param('id') id: string) {
     return this.bidsService.remove(+id);
   }
+
+  @Get('user/:userId')
+  getUserBids(@Param('userId') userId: string) {
+    return this.bidsService.getUserBids(+userId);
+  }
 }

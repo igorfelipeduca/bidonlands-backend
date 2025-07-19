@@ -141,6 +141,8 @@ export const CreateAdvertDto = z.object({
     .optional(),
   bidsUntilReservePrice: z
     .number({ error: 'Bids until reserve price must be a number' })
-    .min(1, { error: 'The bids until reserve price must be at least 1.' })
+    .optional(),
+  minimumWalletBalance: z
+    .number({ error: 'Minimum wallet balance must be a number' })
     .optional(),
 });

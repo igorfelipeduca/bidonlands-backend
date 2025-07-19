@@ -56,7 +56,9 @@ export class AdvertsService {
       .reduce((sum, bid) => sum + (bid.amount || 0), 0);
 
     const isReserveMet = totalBidsAmount >= advert.reservePrice;
-    const amountUntilReserve = isReserveMet ? 0 : advert.reservePrice - totalBidsAmount;
+    const amountUntilReserve = isReserveMet
+      ? 0
+      : advert.reservePrice - totalBidsAmount;
 
     return {
       ...advert,
@@ -219,7 +221,7 @@ export class AdvertsService {
       .select({
         advert: advertsTable,
         bid: bidsTable,
-        user: usersTable
+        user: usersTable,
       })
       .from(advertsTable)
       .where(eq(advertsTable.slug, slug))
@@ -441,7 +443,7 @@ export class AdvertsService {
       .select({
         advert: advertsTable,
         bid: bidsTable,
-        user: usersTable
+        user: usersTable,
       })
       .from(advertsTable)
       .where(eq(advertsTable.status, STATUS_CHOICES.ACTIVE))
@@ -539,13 +541,40 @@ export class AdvertsService {
       throw new Error('Advert not found');
     }
 
+    const likedBy = dbAdvert[0].likedBy || [];
+    let updatedLikedBy: number[];
+
+    if (likedBy.includes(userId)) {
+      updatedLikedBy = likedBy.filter((id: number) => id !== userId);
+    } else {
+      updatedLikedBy = [...likedBy, userId];
+    }
+
     const insertData = {
-      likedBy: [...dbAdvert[0].likedBy, userId],
+      likedBy: updatedLikedBy,
     } as Partial<InferInsertModel<typeof advertsTable>>;
 
     return await this.db
       .update(advertsTable)
       .set(insertData)
       .where(eq(advertsTable.id, advertId));
+  }
+
+  async getUserFavorites(userId: number) {
+    const dbUser = await this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+
+    if (!dbUser.length) {
+      throw new NotFoundException('User not found');
+    }
+
+    const favorites = await this.db
+      .select()
+      .from(advertsTable)
+      .where(sql`${advertsTable.likedBy} @> ARRAY[${userId}]::integer[]`);
+
+    return favorites;
   }
 }
