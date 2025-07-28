@@ -5,6 +5,7 @@ import * as bids from './bids.schema';
 import * as adverts from './adverts.schema';
 import * as payments from './payments.schema';
 import * as wallets from './wallets.schema';
+import * as withdrawalRequests from './withdrawal-requests.schema';
 
 export const schema = {
   usersTable: users.usersTable,
@@ -15,4 +16,5 @@ export const schema = {
   paymentsTable: payments.paymentsTable,
   walletsTable: wallets.walletsTable,
   walletOperationsTable: wallets.walletOperationsTable,
+  withdrawalRequestsTable: withdrawalRequests.withdrawalRequestsTable,
 };

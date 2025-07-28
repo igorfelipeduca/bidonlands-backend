@@ -79,6 +79,14 @@ export const StripePaymentCompletedDto = z.object(
                   .string({ error: 'User ID must be a string' })
                   .optional()
                   .nullable(),
+                paymentId: z
+                  .string({ error: 'Payment ID must be a string' })
+                  .optional()
+                  .nullable(),
+                transactionType: z
+                  .string({ error: 'Transaction type must be a string' })
+                  .optional()
+                  .nullable(),
               },
               { error: 'Metadata must be an object' },
             ),

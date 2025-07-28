@@ -28,12 +28,19 @@ export const walletOperationsTable = pgTable('wallet_operations', {
   balanceChange: integer().notNull(),
   balanceBefore: integer().notNull(),
   balanceAfter: integer().notNull(),
-  operationType: text('operationType').notNull(),
+  operationType: text('operationType', {
+    enum: ['withdrawal', 'deposit', 'auction payment'],
+  }).notNull(),
   createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updatedAt', { mode: 'date' })
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+  status: text('status', {
+    enum: ['processed', 'denied', 'pending'],
+  })
+    .notNull()
+    .default('pending'),
 });
 
 export const walletsRelations = relations(walletsTable, ({ one, many }) => ({

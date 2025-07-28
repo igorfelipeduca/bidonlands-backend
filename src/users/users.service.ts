@@ -12,16 +12,20 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { schema } from '../drizzle/schema';
 import { DrizzleAsyncProvider } from 'src/drizzle/drizzle.provider';
 import { usersTable, UserType } from '../drizzle/schema/users.schema';
-import { eq, InferInsertModel } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { EmailService } from 'src/email/email.service';
 import Stripe from 'stripe';
-import { bidsTable } from 'src/drizzle/schema/bids.schema';
 import {
   documentsTable,
   DocumentType,
 } from 'src/drizzle/schema/documents.schema';
-import { walletsTable, WalletType, walletOperationsTable, WalletOperationType } from 'src/drizzle/schema/wallets.schema';
+import {
+  walletsTable,
+  WalletType,
+  walletOperationsTable,
+  WalletOperationType,
+} from 'src/drizzle/schema/wallets.schema';
 
 @Injectable()
 export class UsersService {
@@ -61,6 +65,15 @@ export class UsersService {
 
     await this.sendVerificationEmail(insertData.email, insertData.firstName);
 
+    const walletInsertData = {
+      userId: result[0].id,
+      billingAddress: result[0].addressLine,
+    };
+
+    const newWallet = await this.db
+      .insert(walletsTable)
+      .values(walletInsertData);
+
     return result[0];
   }
 
@@ -83,7 +96,10 @@ export class UsersService {
 
   async findOne(url: string, documents: string) {
     let user:
-      | (UserType & { documents?: DocumentType[]; wallet?: WalletType & { operations?: WalletOperationType[] } })
+      | (UserType & {
+          documents?: DocumentType[];
+          wallet?: WalletType & { operations?: WalletOperationType[] };
+        })
       | null = null;
 
     let query = url.split('q=')[1] || '';
@@ -127,8 +143,8 @@ export class UsersService {
     if (walletWithOperations.length > 0) {
       const wallet = walletWithOperations[0].wallets;
       const operations = walletWithOperations
-        .filter(row => row.wallet_operations !== null)
-        .map(row => row.wallet_operations)
+        .filter((row) => row.wallet_operations !== null)
+        .map((row) => row.wallet_operations)
         .reverse();
 
       user.wallet = {
@@ -170,13 +186,14 @@ export class UsersService {
         eq(walletsTable.id, walletOperationsTable.walletId),
       );
 
-    let wallet: (WalletType & { operations?: WalletOperationType[] }) | null = null;
+    let wallet: (WalletType & { operations?: WalletOperationType[] }) | null =
+      null;
 
     if (walletWithOperations.length > 0) {
       const walletData = walletWithOperations[0].wallets;
       const operations = walletWithOperations
-        .filter(row => row.wallet_operations !== null)
-        .map(row => row.wallet_operations)
+        .filter((row) => row.wallet_operations !== null)
+        .map((row) => row.wallet_operations)
         .reverse();
 
       wallet = {

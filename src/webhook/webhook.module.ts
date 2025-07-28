@@ -11,6 +11,7 @@ import { UsersService } from 'src/users/users.service';
 import { UsersModule } from 'src/users/users.module';
 import { PaymentsModule } from 'src/payments/payments.module';
 import { PaymentsService } from 'src/payments/payments.service';
+import { WalletsModule } from 'src/wallets/wallets.module';
 
 @Module({
   controllers: [AdvertsController],
@@ -28,6 +29,7 @@ import { PaymentsService } from 'src/payments/payments.service';
     BidsModule,
     UsersModule,
     PaymentsModule,
+    WalletsModule,
   ],
 })
 export class WebhookModule {}

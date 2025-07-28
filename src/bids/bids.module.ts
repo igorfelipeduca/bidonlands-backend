@@ -9,6 +9,7 @@ import { UsersService } from 'src/users/users.service';
 import { EmailService } from 'src/email/email.service';
 import { PaymentsService } from 'src/payments/payments.service';
 import { AuthModule } from 'src/auth/auth.module';
+import { WalletsModule } from 'src/wallets/wallets.module';
 
 @Module({
   controllers: [BidsController],
@@ -19,6 +20,7 @@ import { AuthModule } from 'src/auth/auth.module';
     EmailModule,
     PaymentsModule,
     AuthModule,
+    WalletsModule,
   ],
 })
 export class BidsModule {}

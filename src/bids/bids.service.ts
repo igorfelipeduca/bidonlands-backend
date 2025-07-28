@@ -21,14 +21,8 @@ import { EmailService } from 'src/email/email.service';
 import { Money } from '../lib/money-value-object';
 import { getHighestBid } from 'src/lib/get-highest-bid';
 import { STATUS_CHOICES } from 'src/drizzle/schema/enums/advert.enum';
-import Stripe from 'stripe';
-import * as dotenv from 'dotenv';
 import { PaymentsService } from 'src/payments/payments.service';
 import { walletsTable } from 'src/drizzle/schema/wallets.schema';
-
-dotenv.config();
-const stripe = new Stripe(process.env.STRIPE_KEY ?? '');
-
 @Injectable()
 export class BidsService {
   constructor(
@@ -199,28 +193,10 @@ export class BidsService {
       }
 
       if (advert.initialDepositAmount > 0) {
-        const price = await stripe.prices.create({
-          currency: 'usd',
-          unit_amount: advert.initialDepositAmount,
-          product_data: {
-            name: `Initial deposit for auction ${advert.title}`,
-          },
-        });
-
-        const paymentLink = await stripe.paymentLinks.create({
-          line_items: [
-            {
-              price: price.id,
-              quantity: 1,
-            },
-          ],
-        });
-
         await this.paymentsService.create({
           advertId: advert.id,
           amount: advert.initialDepositAmount,
           description: `Initial deposit for auction ${advert.title}`,
-          url: paymentLink.url,
           userId,
         });
       }

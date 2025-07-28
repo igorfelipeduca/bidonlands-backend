@@ -7,16 +7,21 @@ import {
   Param,
   Delete,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { WalletsService } from './wallets.service';
 import z from 'zod';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/guards/roles.guard';
+import { AuthenticatedRequest, RolesGuard } from 'src/guards/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { Role } from 'src/auth/enums/role.enum';
 import { CreateWalletOperationDto } from './dto/create-wallet-operation.dto';
+import {
+  ManageWithdrawalRequestDto,
+  RequestWithdrawalDto,
+} from './dto/request-withdrawal.dto';
 
 @Controller('wallets')
 export class WalletsController {
@@ -35,6 +40,46 @@ export class WalletsController {
   ) {
     return await this.walletsService.createWalletOperation(
       createWalletOperationDto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @Post('deposit')
+  async createDepositPaymentLink(
+    @Body() createWalletOperationDto: z.infer<typeof CreateWalletOperationDto>,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return await this.walletsService.createDepositPaymentLink(
+      createWalletOperationDto.amount,
+      req.user.id,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @Post('withdrawal')
+  async requestWithdrawal(
+    @Body() requestWithdrawalDto: z.infer<typeof RequestWithdrawalDto>,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return await this.walletsService.requestWithdrawal(
+      requestWithdrawalDto,
+      req.user.id,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Admin)
+  @Patch('withdrawal/:id/manage')
+  async manageWithdrawalRequest(
+    @Body()
+    manageWithdrawalRequestDto: z.infer<typeof ManageWithdrawalRequestDto>,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return await this.walletsService.manageWithdrawalRequest(
+      +req.params.id,
+      manageWithdrawalRequestDto.status,
     );
   }
 
