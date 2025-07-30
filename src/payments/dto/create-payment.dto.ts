@@ -9,4 +9,5 @@ export const CreatePaymentDto = z.object({
   walletId: z.number().int().optional(),
   status: z.number().int().default(PAYMENT_STATUS.PENDING),
   transactionType: z.string().default(''),
+  origin: z.string().optional(),
 });

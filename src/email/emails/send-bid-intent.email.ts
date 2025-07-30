@@ -26,7 +26,7 @@ export const SendBidIntentEmail = ({
           <tbody>
             <tr style="width:100%">
               <td>
-                <img alt="DeedBid" height="32" src="https://www.deedbid.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo-dark.c5a29ad2.png&w=256&q=75" style="display:block;outline:none;border:none;text-decoration:none" width="auto" />
+                <img alt="BidOnLands" height="32" src="https://www.deedbid.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo-dark.c5a29ad2.png&w=256&q=75" style="display:block;outline:none;border:none;text-decoration:none" width="auto" />
                 <p style="font-size:24px;line-height:1.25;margin:24px 0;color:#AB8551">
                   <strong>Your Bid is Reserved - ${bid.depositPercentage}% Deposit Required</strong>
                 </p>
@@ -64,7 +64,7 @@ export const SendBidIntentEmail = ({
                           Need help? Contact our support team
                         </p>
                         <p style="font-size:12px;line-height:16px;margin:0;color:#6a737d;text-align:center">
-                          © ${new Date().getFullYear()} DeedBid. All rights reserved.
+                          © ${new Date().getFullYear()} BidOnLands. All rights reserved.
                         </p>
                       </td>
                     </tr>

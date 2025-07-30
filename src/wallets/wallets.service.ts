@@ -23,6 +23,7 @@ import Stripe from 'stripe';
 import { PaymentsService } from 'src/payments/payments.service';
 import { RequestWithdrawalDto } from './dto/request-withdrawal.dto';
 import { withdrawalRequestsTable } from 'src/drizzle/schema/withdrawal-requests.schema';
+import { EmailService } from 'src/email/email.service';
 
 const stripe = new Stripe(process.env.STRIPE_KEY);
 
@@ -33,6 +34,8 @@ export class WalletsService {
     private db: NodePgDatabase<typeof schema>,
     @Inject(forwardRef(() => PaymentsService))
     private paymentsService: PaymentsService,
+    @Inject(EmailService)
+    private emailService: EmailService,
   ) {}
 
   async create(createWalletDto: z.infer<typeof CreateWalletDto>) {
@@ -121,6 +124,7 @@ export class WalletsService {
 
   async createWalletOperation(
     createWalletOperationDto: z.infer<typeof CreateWalletOperationDto>,
+    userId: number,
   ) {
     const { data, error } = CreateWalletOperationDto.safeParse(
       createWalletOperationDto,
@@ -133,14 +137,15 @@ export class WalletsService {
     const wallet = await this.db
       .select()
       .from(walletsTable)
-      .where(eq(walletsTable.id, data.walletId));
+      .where(eq(walletsTable.userId, userId));
 
     if (!wallet || wallet.length === 0) {
       throw new NotFoundException('Wallet not found');
     }
 
     const currentBalance = wallet[0].balance;
-    const operationAmount = data.type === 'withdraw' ? -data.amount : data.amount;
+    const operationAmount =
+      data.type === 'withdraw' ? -data.amount : data.amount;
 
     if (data.type === 'withdraw' && currentBalance < data.amount) {
       throw new BadRequestException('Insufficient balance for withdrawal');
@@ -154,7 +159,7 @@ export class WalletsService {
         balanceBefore: currentBalance,
         balanceAfter: newBalance,
         operationType: data.type,
-        walletId: data.walletId,
+        walletId: wallet[0].id,
       } as InferInsertModel<typeof walletOperationsTable>;
 
       const [operation] = await tx
@@ -169,13 +174,17 @@ export class WalletsService {
       await tx
         .update(walletsTable)
         .set(walletUpdateData)
-        .where(eq(walletsTable.id, data.walletId));
+        .where(eq(walletsTable.userId, userId));
 
       return operation;
     });
   }
 
-  async createDepositPaymentLink(amount: number, userId: number) {
+  async createDepositPaymentLink(
+    amount: number,
+    userId: number,
+    origin?: string,
+  ) {
     const dbUser = await this.db
       .select()
       .from(usersTable)
@@ -200,7 +209,14 @@ export class WalletsService {
       amount: depositAmount.getInCents(),
       userId,
       description: `Deposit of ${depositAmount.format()} USD to ${dbUser[0].firstName} ${dbUser[0].lastName}'s wallet`,
+      origin,
     });
+
+    await this.emailService.sendPaymentLinkCreationEmail(
+      userId,
+      depositAmount.getInCents(),
+      payment.url,
+    );
 
     return payment;
   }

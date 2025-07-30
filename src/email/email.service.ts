@@ -347,12 +347,14 @@ export class EmailService {
       throw new NotFoundException('User not found');
     }
 
-    const formattedAmount = new Money(amount, 'USD', { isCents: true }).format();
+    const formattedAmount = new Money(amount, 'USD', {
+      isCents: true,
+    }).format();
 
     const sentEmail = await this.resend.emails.send({
       from: 'BidOnLands <igor@duca.dev>',
       to: [user[0].email],
-      subject: `Complete Your Bid Deposit - ${formattedAmount}`,
+      subject: `Complete your payment`,
       html: PaymentLinkCreationEmail({
         user: user[0],
         amount: formattedAmount,

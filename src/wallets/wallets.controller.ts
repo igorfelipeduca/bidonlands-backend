@@ -37,9 +37,11 @@ export class WalletsController {
   @Post('operation')
   async createWalletOperation(
     @Body() createWalletOperationDto: z.infer<typeof CreateWalletOperationDto>,
+    @Request() req: AuthenticatedRequest,
   ) {
     return await this.walletsService.createWalletOperation(
       createWalletOperationDto,
+      req.user.id,
     );
   }
 
@@ -53,6 +55,7 @@ export class WalletsController {
     return await this.walletsService.createDepositPaymentLink(
       createWalletOperationDto.amount,
       req.user.id,
+      req.body.origin,
     );
   }
 

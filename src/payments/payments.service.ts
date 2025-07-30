@@ -37,8 +37,8 @@ export class PaymentsService {
   async createDbPayment(
     body: z.infer<typeof CreatePaymentDto>,
     user: UserType,
-    transactionType: string,
     walletId: number,
+    origin?: string,
   ) {
     const amount = new Money(body.amount, 'USD', { isCents: true });
 
@@ -65,31 +65,18 @@ export class PaymentsService {
       },
     });
 
-    // const paymentLink = await stripe.paymentLinks.create({
-    //   line_items: [
-    //     {
-    //       price: price.id,
-    //       quantity: 1,
-    //     },
-    //   ],
-    //   metadata: {
-    //     userId: user.id.toString(),
-    //     paymentId: createdPayment[0].id.toString(),
-    //     transactionType,
-    //   },
-    // });
+    console.log({ origin });
 
     const checkoutSession = await stripe.checkout.sessions.create({
       line_items: [{ price: price.id, quantity: 1 }],
       mode: 'payment',
-      success_url: `https://duca.dev/payment/success`,
-      cancel_url: `https://duca.dev/payment/cancel`,
+      success_url: `${origin ?? 'https://duca.dev'}/payment/success`,
+      cancel_url: `${origin ?? 'https://duca.dev'}/payment/cancel`,
       customer_email: user.email,
     });
 
-    console.log({ checkoutSession, parsedUrl: checkoutSession.url });
+    console.log({ checkoutSession });
 
-    // const parsedUrl = `${checkoutSession.url}?prefilled_email=${user.email}`;
     const parsedUrl = checkoutSession.url;
 
     const updateData = {
@@ -149,8 +136,8 @@ export class PaymentsService {
         return await this.createDbPayment(
           data,
           dbUser[0],
-          data.transactionType,
           dbWallet[0].id,
+          data.origin,
         );
       }
 
@@ -160,8 +147,8 @@ export class PaymentsService {
     return await this.createDbPayment(
       data,
       dbUser[0],
-      data.transactionType,
       dbWallet[0].id,
+      data.origin,
     );
   }
 
@@ -222,45 +209,59 @@ export class PaymentsService {
   async remove(id: number) {
     const payment = await this.findOne(id);
 
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${id} not found`);
+    }
+
+    if (payment.status !== PAYMENT_STATUS.PENDING) {
+      throw new BadRequestException('Payment is already processed');
+    }
+
     await this.db.delete(paymentsTable).where(eq(paymentsTable.id, id));
 
     return { message: `Payment with ID ${id} has been deleted` };
   }
 
   async processPayment(email: string, amount: number) {
-    console.log({ email, amount });
+    try {
+      const dbUser = await this.db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, email));
 
-    const dbUser = await this.db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, email));
+      if (!dbUser.length) throw new NotFoundException('User not found');
 
-    if (!dbUser.length) throw new NotFoundException('User not found');
+      const userPayments = await this.db
+        .select()
+        .from(paymentsTable)
+        .where(eq(paymentsTable.userId, dbUser[0].id));
 
-    const userPayments = await this.db
-      .select()
-      .from(paymentsTable)
-      .where(eq(paymentsTable.userId, dbUser[0].id));
+      if (!userPayments.length)
+        throw new NotFoundException('Payment not found');
 
-    if (!userPayments.length) throw new NotFoundException('Payment not found');
+      const payment = userPayments.find(
+        (p) => p.amount === amount && p.status === PAYMENT_STATUS.PENDING,
+      );
 
-    const payment = userPayments.find(
-      (p) => p.amount === amount && p.status === PAYMENT_STATUS.PENDING,
-    );
+      const paymentUpdateData = {
+        status: PAYMENT_STATUS.APPROVED,
+      } as Partial<InferInsertModel<typeof paymentsTable>>;
 
-    const paymentUpdateData = {
-      status: PAYMENT_STATUS.APPROVED,
-    } as Partial<InferInsertModel<typeof paymentsTable>>;
+      await this.walletsService.createWalletOperation(
+        {
+          amount,
+          type: 'deposit',
+        },
+        dbUser[0].id,
+      );
 
-    await this.walletsService.createWalletOperation({
-      walletId: payment.walletId,
-      amount: amount,
-      type: 'deposit',
-    });
-
-    return await this.db
-      .update(paymentsTable)
-      .set(paymentUpdateData)
-      .where(eq(paymentsTable.id, payment.id));
+      return await this.db
+        .update(paymentsTable)
+        .set(paymentUpdateData)
+        .where(eq(paymentsTable.id, payment.id));
+    } catch (error) {
+      console.error(error);
+      throw new BadRequestException('Failed to process payment', error);
+    }
   }
 }
