@@ -60,5 +60,5 @@ export const usersTable = pgTable('users', {
 });
 
 export type UserType = typeof usersTable.$inferSelect & {
-  documents?: DocumentType[]
+  documents?: DocumentType[];
 };

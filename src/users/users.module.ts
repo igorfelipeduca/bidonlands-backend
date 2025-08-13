@@ -10,9 +10,9 @@ import { AuthModule } from 'src/auth/auth.module';
   controllers: [UsersController],
   providers: [UsersService, JwtService],
   imports: [
-    DrizzleModule, 
+    DrizzleModule,
     forwardRef(() => EmailModule),
-    forwardRef(() => AuthModule)
+    forwardRef(() => AuthModule),
   ],
   exports: [UsersService],
 })

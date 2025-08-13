@@ -122,4 +122,53 @@ export class AuthService {
       .where(eq(usersTable.id, user[0].id))
       .returning();
   }
+
+  async resendVerificationEmail(email: string) {
+    const user = await this.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email));
+
+    if (!user || !user.length) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    if (user[0].emailVerified) {
+      throw new Error('ALREADY_VERIFIED');
+    }
+
+    const existingToken = await this.db
+      .select()
+      .from(emailTokenTable)
+      .where(eq(emailTokenTable.userId, user[0].id));
+
+    if (existingToken.length > 0) {
+      const lastSent = existingToken[0].createdAt;
+      const now = new Date();
+      const timeDiffMinutes = Math.floor(
+        (now.getTime() - lastSent.getTime()) / (1000 * 60),
+      );
+
+      if (timeDiffMinutes < 5) {
+        const remainingTime = 5 - timeDiffMinutes;
+        throw new Error(
+          `RATE_LIMITED: Please wait ${remainingTime} minute${remainingTime === 1 ? '' : 's'} before requesting another verification email.`,
+        );
+      }
+
+      await this.db
+        .delete(emailTokenTable)
+        .where(eq(emailTokenTable.userId, user[0].id));
+    }
+
+    await this.usersService.sendVerificationEmail(
+      user[0].email,
+      user[0].firstName,
+    );
+
+    return {
+      message: 'Verification email sent successfully',
+      email: user[0].email,
+    };
+  }
 }

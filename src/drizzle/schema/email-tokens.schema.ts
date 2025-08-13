@@ -18,5 +18,8 @@ export const emailTokenTable = pgTable('email-token', {
   expiresAt: bigint('expiresAt', { mode: 'number' }).notNull(),
   used: boolean().default(false),
   createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt', { mode: 'date' }).notNull().defaultNow().$onUpdate(() => new Date()),
+  updatedAt: timestamp('updatedAt', { mode: 'date' })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });

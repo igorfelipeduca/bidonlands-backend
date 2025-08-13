@@ -16,6 +16,7 @@ import { UpdateAdvertDto } from './dto/update-advert.dto';
 import z from 'zod';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { AuthenticatedRequest, RolesGuard } from 'src/guards/roles.guard';
+import { DocumentsGuard } from 'src/guards/documents.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { Role } from 'src/auth/enums/role.enum';
 
@@ -25,7 +26,7 @@ export class AdvertsController {
 
   @Post()
   @Roles(Role.Admin)
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, DocumentsGuard)
   async create(
     @Body() createAdvertDto: z.infer<typeof CreateAdvertDto>,
     @Request() req: AuthenticatedRequest,

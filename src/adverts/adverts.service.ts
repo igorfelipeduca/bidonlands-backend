@@ -51,19 +51,33 @@ export class AdvertsService {
       return advert;
     }
 
+    const reservePrice = new Money(advert.reservePrice, 'USD', {
+      isCents: true,
+    });
+
     const totalBidsAmount = bids
       .filter((bid) => bid.active)
-      .reduce((sum, bid) => sum + (bid.amount || 0), 0);
+      .reduce(
+        (sum, bid) => {
+          const bidAmount = new Money(bid.amount || 0, 'USD', {
+            isCents: true,
+          });
+          return sum.add(bidAmount);
+        },
+        new Money(0, 'USD', { isCents: true }),
+      );
 
-    const isReserveMet = totalBidsAmount >= advert.reservePrice;
+    const isReserveMet =
+      totalBidsAmount.isGreaterThan(reservePrice) ||
+      totalBidsAmount.isEqualTo(reservePrice);
     const amountUntilReserve = isReserveMet
-      ? 0
-      : advert.reservePrice - totalBidsAmount;
+      ? new Money(0, 'USD', { isCents: true })
+      : reservePrice.subtract(totalBidsAmount);
 
     return {
       ...advert,
       isReserveMet,
-      amountUntilReserve,
+      amountUntilReserve: amountUntilReserve.getInCents(),
     };
   }
 
@@ -84,6 +98,12 @@ export class AdvertsService {
       throw new UnauthorizedException(
         'You can not create advertisements for other users.',
       );
+
+    if (!dbUser[0].emailVerified) {
+      throw new UnauthorizedException(
+        'Email verification required. Please verify your email before creating advertisements.',
+      );
+    }
 
     const amount = new Money(data.amount, 'USD', { isCents: true });
     if (amount.getInCents() < 100) {

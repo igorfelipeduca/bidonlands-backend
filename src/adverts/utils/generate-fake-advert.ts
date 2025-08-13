@@ -1,7 +1,13 @@
 import { faker } from '@faker-js/faker';
 import { US_STATES } from '../enums/us-states.enum';
 import { randomEnumValue } from './random-enum-value';
-import { SALES_TYPE_CHOICES, CATEGORY_CHOICES, ADS_TYPE_CHOICES, CONDITION_CHOICES, STATUS_CHOICES } from '../../drizzle/schema/enums/advert.enum';
+import {
+  SALES_TYPE_CHOICES,
+  CATEGORY_CHOICES,
+  ADS_TYPE_CHOICES,
+  CONDITION_CHOICES,
+  STATUS_CHOICES,
+} from '../../drizzle/schema/enums/advert.enum';
 
 export function generateFakeAdvert({
   userId,

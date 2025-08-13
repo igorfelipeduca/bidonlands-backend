@@ -23,4 +23,4 @@ export const bidsTable = pgTable('bids', {
     .$onUpdate(() => new Date()),
 });
 
-export type BidType = typeof bidsTable.$inferSelect
+export type BidType = typeof bidsTable.$inferSelect;

@@ -44,7 +44,7 @@ import { WalletsModule } from './wallets/wallets.module';
     ScheduleModule.forRoot(),
     AdvertTasksModule,
     PaymentsModule,
-    WalletsModule
+    WalletsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

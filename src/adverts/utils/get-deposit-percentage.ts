@@ -1,6 +1,4 @@
-export const getDepositPercentage = (
-  state: string,
-) => {
+export const getDepositPercentage = (state: string) => {
   let percentage: number;
   switch (state) {
     case 'FL':

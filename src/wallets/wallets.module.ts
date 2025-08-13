@@ -15,7 +15,7 @@ import { PaymentsModule } from 'src/payments/payments.module';
     UsersModule,
     DrizzleModule,
     AuthModule,
-    forwardRef(() => PaymentsModule)
+    forwardRef(() => PaymentsModule),
   ],
   exports: [WalletsService],
 })

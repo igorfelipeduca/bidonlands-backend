@@ -15,6 +15,7 @@ import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
 import { AuthenticatedRequest, RolesGuard } from 'src/guards/roles.guard';
+import { DocumentsGuard } from 'src/guards/documents.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { Role } from 'src/auth/enums/role.enum';
 import { CreateWalletOperationDto } from './dto/create-wallet-operation.dto';
@@ -45,7 +46,7 @@ export class WalletsController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, DocumentsGuard)
   @Roles(Role.Admin)
   @Post('deposit')
   async createDepositPaymentLink(

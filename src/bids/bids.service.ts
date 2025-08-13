@@ -121,39 +121,75 @@ export class BidsService {
         );
       }
 
-      if (
-        advert.minimumWalletBalance &&
-        userWallet[0].balance < advert.minimumWalletBalance
-      ) {
-        throw new UnauthorizedException(
-          `You need to have a wallet with a balance of at least ${advert.minimumWalletBalance} to place a bid.`,
-        );
+      const userWalletBalance = new Money(userWallet[0].balance, 'USD', {
+        isCents: true,
+      });
+
+      if (advert.minimumWalletBalance) {
+        const minimumRequired = new Money(advert.minimumWalletBalance, 'USD', {
+          isCents: true,
+        });
+
+        if (userWalletBalance.isLessThan(minimumRequired)) {
+          throw new UnauthorizedException(
+            `Insufficient wallet balance. You need at least ${minimumRequired.format()} but have ${userWalletBalance.format()}. Please deposit funds to your wallet.`,
+          );
+        }
+      }
+
+      if (advert.initialDepositAmount) {
+        const depositRequired = new Money(advert.initialDepositAmount, 'USD', {
+          isCents: true,
+        });
+
+        if (userWalletBalance.isLessThan(depositRequired)) {
+          throw new UnauthorizedException(
+            `Insufficient wallet balance for bid deposit. This auction requires a ${depositRequired.format()} deposit, but you have ${userWalletBalance.format()}. Please deposit funds to your wallet.`,
+          );
+        }
       }
 
       const highestBid = getHighestBid(bids);
 
-      data.amount = dataAmountInCents;
+      const newBidAmount = new Money(dataAmountInCents, 'USD', {
+        isCents: true,
+      });
 
-      if (
-        highestBid &&
-        new Money(dataAmountInCents, 'USD', { isCents: true }).getInCents() >
-          new Money(highestBid.amount, 'USD', { isCents: true }).getInCents()
-      ) {
-        const formattedHighestBidAmount = new Money(highestBid.amount, 'USD', {
+      if (highestBid) {
+        const currentHighestAmount = new Money(highestBid.amount, 'USD', {
           isCents: true,
-        }).format();
-
-        const formattedNewAmount = new Money(dataAmountInCents, 'USD', {
-          isCents: true,
-        }).format();
-
-        await this.emailsService.sendOutbidEmail(highestBid.userId, {
-          amount: dataAmountInCents,
-          highestBid: formattedNewAmount,
-          formattedAmount: formattedHighestBidAmount,
-          websiteUrl: `https://www.deedbid.com/advert/${data.advertId}`,
         });
+
+        const minimumIncrement = currentHighestAmount.percentage(5);
+        const minimumNextBid = currentHighestAmount.add(minimumIncrement);
+
+        if (newBidAmount.isLessThan(minimumNextBid)) {
+          throw new UnauthorizedException(
+            `Bid too low. Your bid of ${newBidAmount.format()} must be at least ${minimumNextBid.format()} (5% more than current highest bid of ${currentHighestAmount.format()}).`,
+          );
+        }
+
+        if (newBidAmount.isGreaterThan(currentHighestAmount)) {
+          await this.emailsService.sendOutbidEmail(highestBid.userId, {
+            amount: dataAmountInCents,
+            highestBid: newBidAmount.format(),
+            formattedAmount: currentHighestAmount.format(),
+            websiteUrl: `https://www.deedbid.com/advert/${data.advertId}`,
+          });
+        }
+      } else {
+        const advertMinBid = new Money(advert.minBidAmount, 'USD', {
+          isCents: true,
+        });
+
+        if (newBidAmount.isLessThan(advertMinBid)) {
+          throw new UnauthorizedException(
+            `Bid too low. Your bid of ${newBidAmount.format()} must be at least ${advertMinBid.format()} (minimum bid for this auction).`,
+          );
+        }
       }
+
+      data.amount = dataAmountInCents;
 
       const insertBidData = {
         advertId: data.advertId,
@@ -316,9 +352,12 @@ export class BidsService {
       );
     }
 
-    if (data.amount * 100 < bid.amount * 100) {
+    const newBidAmount = new Money(data.amount, 'USD');
+    const currentBidAmount = new Money(bid.amount, 'USD', { isCents: true });
+
+    if (newBidAmount.isLessThan(currentBidAmount)) {
       throw new UnauthorizedException(
-        'You can not place a bid lower than the current bid',
+        `You cannot place a bid lower than the current bid. Your bid: ${newBidAmount.format()}, Current bid: ${currentBidAmount.format()}`,
       );
     }
 
